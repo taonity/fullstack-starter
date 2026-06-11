@@ -98,11 +98,12 @@ The project requires a set of environment variables to be configured for some se
 ```mermaid
 erDiagram
     app_user {
+        character_varying display_name "{NOT_NULL}"
         character_varying email "{NOT_NULL}"
         character_varying google_id PK "{NOT_NULL}"
-        character_varying name "{NOT_NULL}"
-        character_varying picture_url
+        character_varying picture_url 
     }
+
 ```
 <!-- mermerd-end -->
 
