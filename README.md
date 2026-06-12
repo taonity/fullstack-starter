@@ -111,6 +111,15 @@ erDiagram
 The service is deployed in a cheap VPS. [taonity/docker-webhook](https://github.com/taonity/docker-webhook) is used for
 deployment in a custom production environment — [taonity/prodenv](https://github.com/taonity/prodenv/tree/defr-prodenv).
 
+#### GitHub Environment setup
+The release workflow uses `environment: production` on the `approve-prod` job to gate production deployments.
+For this to require manual approval, you must configure protection rules on the environment:
+
+1. Go to **GitHub repo → Settings → Environments → "production"** (create it if it doesn't exist).
+2. Enable **"Required reviewers"** and add the appropriate users or teams.
+
+Without this configuration, the `approve-prod` job will pass automatically with no manual intervention.
+
 ### Guides
 
 - [docs/ADD_FEATURE.md](docs/ADD_FEATURE.md) — How to add a new feature (package-per-feature)

@@ -16,6 +16,16 @@ export default function LoginPage() {
   const [isChecking, setIsChecking] = useState(false)
 
   useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setIsChecking(false)
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
+
+  useEffect(() => {
     const authError = getCookie('auth_error')
     if (authError) {
       deleteCookie('auth_error')
