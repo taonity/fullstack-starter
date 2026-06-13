@@ -108,25 +108,16 @@ jobs:
         echo "tag=$tag" >> "$GITHUB_OUTPUT"
         echo "Successfully extracted tag $tag"
 
-    - name: Build back-end with Maven and optionally run tests
+    - name: Build back-end with Maven
+      env:
+        GITHUB_REF: refs/tags/${{ steps.github_tag_action.outputs.new_tag }}
       run: |
         tag=${{ steps.extract_tag.outputs.tag }}
         username=${{ secrets.DOCKER_USERNAME }}
         mvn -v
-        mvn -B versions:set -DnewVersion="$tag" -DgenerateBackupPoms=false -DprocessAllModules=true
-        echo "Backend version after versions:set:"
-        mvn -pl backend help:evaluate "-Dexpression=project.version" -q -DforceStdout
         mvn -B -P build-docker-image package -DskipTests -Ddocker.registry="$username"
         echo "Docker images after build:"
         docker images | grep fullstack-starter-backend || true
-
-    - name: Push version tag
-      run: |
-        raw_tag=${{ steps.github_tag_action.outputs.new_tag }}
-        git tag "$raw_tag"
-        git push origin "$raw_tag"
-      env:
-        GITHUB_TOKEN: ${{ secrets.TAGGING_GITHUB_TOKEN }}
 
     - name: Retag back-end docker image
       run: |
@@ -170,6 +161,14 @@ jobs:
         tag=${{ steps.extract_tag.outputs.tag }}
         docker push "$username/$imageArtifactId:$tag"
         docker push "$username/$imageArtifactId:latest"
+
+    - name: Push version tag
+      run: |
+        raw_tag=${{ steps.github_tag_action.outputs.new_tag }}
+        git tag "$raw_tag"
+        git push origin "$raw_tag"
+      env:
+        GITHUB_TOKEN: ${{ secrets.TAGGING_GITHUB_TOKEN }}
 
   update-erd:
     needs: release
