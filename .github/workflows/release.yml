@@ -110,7 +110,7 @@ jobs:
 
     - name: Build back-end with Maven
       env:
-        GITHUB_REF: refs/tags/${{ steps.github_tag_action.outputs.new_tag }}
+        VERSIONING_GIT_TAG: ${{ steps.github_tag_action.outputs.new_tag }}
       run: |
         tag=${{ steps.extract_tag.outputs.tag }}
         username=${{ secrets.DOCKER_USERNAME }}
