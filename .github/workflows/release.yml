@@ -114,7 +114,11 @@ jobs:
         username=${{ secrets.DOCKER_USERNAME }}
         mvn -v
         mvn -B versions:set -DnewVersion="$tag" -DgenerateBackupPoms=false -DprocessAllModules=true
+        echo "Backend version after versions:set:"
+        mvn -pl backend help:evaluate "-Dexpression=project.version" -q -DforceStdout
         mvn -B -P build-docker-image package -DskipTests -Ddocker.registry="$username"
+        echo "Docker images after build:"
+        docker images | grep fullstack-starter-backend || true
 
     - name: Push version tag
       run: |
