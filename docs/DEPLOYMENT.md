@@ -91,3 +91,20 @@ Internet ──────────▶│  Frontend   │ :3000
 | `PUBLIC_BACKEND_URL` | Public backend URL (for OAuth redirects) | — |
 | `CSRF_COOKIE_NAME` | CSRF cookie name | `XSRF-TOKEN` |
 | `SPRING_PROFILES_ACTIVE` | Active Spring profiles | `postgres` |
+
+## Conventions
+
+### Environment Variables
+
+- Do **not** hardcode environment variable default values inside application code or service-specific Dockerfiles.
+- You may hardcode only values that are unlikely to change across environments.
+- Define environment-specific defaults only in:
+  - `.yml` files (for backend — e.g., `application-*.yaml`)
+  - `.env.*` files (for frontend — e.g., `.env.development`, `.env.production`)
+  - Docker Compose files (for infrastructure)
+
+### Docker Compose Deployability
+
+- All additional services must be deployable in the Docker Compose infrastructure.
+- Every service must support easy launch in a local environment (via `docker-compose.ports-local.yml` overrides or equivalent).
+- When adding a new service, provide both a production-ready Compose configuration and a local development override.
