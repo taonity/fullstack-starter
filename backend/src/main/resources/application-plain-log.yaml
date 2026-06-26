@@ -1,4 +1,2 @@
 logging:
-  structured:
-    format:
-      console: ~
+  structuredFormat: plain

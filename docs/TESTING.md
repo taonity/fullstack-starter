@@ -6,67 +6,67 @@
 
 ```bash
 # All tests
-mvn test
+./gradlew test
 
 # Backend only
-mvn -pl backend test
+./gradlew :backend:test
 
 # Single test
-mvn -pl backend test -Dtest=HelloControllerTest
+./gradlew :backend:test --tests "*HelloControllerTest"
 ```
 
 ### Test Patterns
 
-#### Integration Tests (Controllers)
+#### Integration Tests (Routes)
+
+Boot the real application with Ktor's `testApplication`. Extend `ControllerTestsBaseClass`, which
+starts the app with the `h2,stub-google,wiremock-off` profiles and a shared Google WireMock stub.
 
 ```kotlin
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("h2")
-class YourControllerTest {
-
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+class YourRoutesTest : ControllerTestsBaseClass() {
 
     @Test
-    fun `endpoint requires authentication`() {
-        mockMvc.perform(get("/your-endpoint"))
-            .andExpect(status().isUnauthorized)
+    fun `endpoint requires authentication`() = withApp {
+        val response = client.get("/your-endpoint")
+        assertThat(response.status).isEqualTo(HttpStatusCode.Unauthorized)
     }
 
     @Test
-    fun `authenticated user can access endpoint`() {
-        mockMvc.perform(
-            get("/your-endpoint").with(
-                oauth2Login().attributes { attrs ->
-                    attrs["sub"] = "google-123"
-                    attrs["name"] = "Test User"
-                    attrs["email"] = "test@example.com"
-                }
-            )
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.field").value("expected"))
+    fun `authenticated user can access endpoint`() = withApp {
+        val sessionCookie = authorizeOAuth2()
+        val response = client.get("/your-endpoint") {
+            header("Cookie", "$sessionCookieName=$sessionCookie")
+        }
+        assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+        assertThat(response.bodyAsText()).contains("expected")
     }
 }
 ```
 
 #### Repository Tests
 
+Exercise the Exposed repositories against in-memory H2 with the real Flyway migrations applied
+(`--app.profiles=h2`).
+
 ```kotlin
-@DataJpaTest
-@ActiveProfiles("h2")
 class YourRepositoryTest {
 
-    @Autowired
-    private lateinit var repository: YourRepository
+    private lateinit var databaseFactory: DatabaseFactory
+    private val repository = YourRepository()
+
+    @BeforeEach
+    fun setUp() {
+        databaseFactory = DatabaseFactory(ConfigLoader.load(arrayOf("--app.profiles=h2")))
+        databaseFactory.connect()
+    }
+
+    @AfterEach
+    fun tearDown() = databaseFactory.close()
 
     @Test
     fun `save and find by id`() {
-        val entity = YourEntity(name = "test")
-        repository.save(entity)
-        val found = repository.findById(entity.id!!)
-        assertThat(found).isPresent
+        repository.save(YourEntity("id-1", "test"))
+        assertThat(repository.findById("id-1")).isNotNull
     }
 }
 ```
@@ -74,7 +74,7 @@ class YourRepositoryTest {
 ### Test Profiles
 
 - `h2` — Uses in-memory H2 database with Flyway migrations
-- Tests use `oauth2Login()` from `spring-security-test` to mock OAuth2 authentication
+- `stub-google` — Drives the Google OAuth2 stub (WireMock); tests authenticate via `authorizeOAuth2()`
 
 ## Frontend Tests
 

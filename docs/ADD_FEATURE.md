@@ -8,8 +8,7 @@ Under `backend/src/main/kotlin/org/example/fullstackstarter/`, create a new pack
 
 ```
 yourfeature/
-├── controller/
-│   └── YourFeatureController.kt
+├── YourFeatureRoutes.kt           # Route extension function
 ├── service/
 │   └── YourFeatureService.kt
 ├── dto/
@@ -22,53 +21,86 @@ yourfeature/
     └── YourFeatureNotFoundException.kt
 ```
 
-## Step 2: Entity & Repository
+## Step 2: Table, Entity & Repository
+
+Define the Exposed table mapping (the table itself is created by Flyway):
 
 ```kotlin
-@Entity
-@Table(name = "your_feature")
-class YourFeatureEntity(
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    val id: String? = null,
-    var name: String,
-    var description: String
-)
+object YourFeatureTable : Table("your_feature") {
+    val id = varchar("id", 255)
+    val name = varchar("name", 512)
+    val description = varchar("description", 2048).nullable()
+    override val primaryKey = PrimaryKey(id)
+}
+
+data class YourFeatureEntity(val id: String, val name: String, val description: String?)
 ```
 
 ```kotlin
-@Repository
-interface YourFeatureRepository : JpaRepository<YourFeatureEntity, String>
+class YourFeatureRepository {
+    fun findAll(): List<YourFeatureEntity> = loggedTransaction {
+        YourFeatureTable.selectAll().map {
+            YourFeatureEntity(it[YourFeatureTable.id], it[YourFeatureTable.name], it[YourFeatureTable.description])
+        }
+    }
+
+    fun findById(id: String): YourFeatureEntity? = loggedTransaction {
+        YourFeatureTable.selectAll().where { YourFeatureTable.id eq id }.singleOrNull()?.let {
+            YourFeatureEntity(it[YourFeatureTable.id], it[YourFeatureTable.name], it[YourFeatureTable.description])
+        }
+    }
+}
 ```
 
 ## Step 3: Service
 
 ```kotlin
-@Service
 class YourFeatureService(
     private val repository: YourFeatureRepository
 ) {
     fun getAll(): List<YourFeatureEntity> = repository.findAll()
-    fun getById(id: String): YourFeatureEntity = repository.findById(id)
-        .orElseThrow { YourFeatureNotFoundException(id) }
+    fun getById(id: String): YourFeatureEntity =
+        repository.findById(id) ?: throw YourFeatureNotFoundException(id)
 }
 ```
 
-## Step 4: Controller
+## Step 4: Routes
+
+Define endpoints as a `Route` extension function; protect them with the `session` authenticator
+and read the user from the `UserSession`:
 
 ```kotlin
-@RestController
-@RequestMapping("/your-feature")
-class YourFeatureController(
-    private val service: YourFeatureService
-) {
-    @GetMapping
-    fun list(@AuthenticationPrincipal principal: GoogleUserPrincipal): List<YourFeatureDto> {
-        return service.getAll().map { YourFeatureDto.from(it) }
+fun Route.yourFeatureRoutes(service: YourFeatureService) {
+    authenticate("session") {
+        get("/your-feature") {
+            val principal = call.principal<UserSession>()!!.toPrincipal()
+            call.respond(service.getAll().map { YourFeatureDto.from(it) })
+        }
     }
 }
 ```
 
-## Step 5: Database Migration
+## Step 5: Wire into Koin and routing
+
+Register the service in `di/AppModule.kt`:
+
+```kotlin
+single { YourFeatureRepository() }
+single { YourFeatureService(get()) }
+```
+
+Then mount the routes in `Application.module()` (resolve the Koin bean as a local before the
+`routing { }` block):
+
+```kotlin
+val yourFeatureService = get<YourFeatureService>()
+routing {
+    helloRoutes()
+    yourFeatureRoutes(yourFeatureService)
+}
+```
+
+## Step 6: Database Migration
 
 Add a Flyway migration in `templates/docker/flyway/sql/tables/`:
 
@@ -81,7 +113,7 @@ CREATE TABLE your_feature (
 );
 ```
 
-## Step 6: Frontend API Route
+## Step 7: Frontend API Route
 
 Add `frontend/src/app/api/your-feature/route.ts`:
 
@@ -96,31 +128,30 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-## Step 7: Test
+## Step 8: Test
 
 ```kotlin
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("h2")
-class YourFeatureControllerTest {
-    @Autowired private lateinit var mockMvc: MockMvc
+class YourFeatureRoutesTest : ControllerTestsBaseClass() {
 
     @Test
-    fun `list requires auth`() {
-        mockMvc.perform(get("/your-feature"))
-            .andExpect(status().isUnauthorized)
+    fun `list requires auth`() = withApp {
+        val response = client.get("/your-feature")
+        assertThat(response.status).isEqualTo(HttpStatusCode.Unauthorized)
     }
 }
 ```
 
-## Step 8: Exception Handling (Optional)
+## Step 9: Exception Handling (Optional)
 
-If you need custom error responses, add a handler in `GlobalExceptionHandler`:
+If you need custom error responses, add a handler in `configureStatusPages()`
+(`web/exception/GlobalExceptionHandler.kt`):
 
 ```kotlin
-@ExceptionHandler(YourFeatureNotFoundException::class)
-fun handleNotFound(e: YourFeatureNotFoundException): ResponseEntity<Map<String, String>> {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(mapOf("error" to "NOT_FOUND", "message" to (e.message ?: "")))
+exception<YourFeatureNotFoundException> { call, cause ->
+    call.respond(
+        HttpStatusCode.NotFound,
+        ClientErrorResponse(ClientErrorCode.NOT_FOUND, cause.message ?: "")
+    )
 }
 ```
+

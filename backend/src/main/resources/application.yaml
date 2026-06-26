@@ -1,66 +1,23 @@
+# Base configuration (Ktor). Profile overlays live in application-<profile>.yaml and are
+# merged by ConfigLoader. Placeholders use ${ENV:default}.
 server:
   port: 8080
-  forward-headers-strategy: native
-  servlet:
-    session:
-      cookie:
-        domain: ${SERVER_SERVLET_SESSION_COOKIE_DOMAIN}
-        name: ${SERVER_SERVLET_SESSION_COOKIE_NAME}
+
+session:
+  cookieDomain: ${SERVER_SERVLET_SESSION_COOKIE_DOMAIN:}
+  cookieName: ${SERVER_SERVLET_SESSION_COOKIE_NAME:JSESSIONID}
 
 app:
-  minimised-http-servlet-logging: true
-  csrf-cookie-name: ${CSRF_COOKIE_NAME}
+  minimisedHttpServletLogging: true
+  csrfCookieName: ${CSRF_COOKIE_NAME:XSRF-TOKEN}
   cookie:
     secure: ${COOKIE_SECURE:true}
-    same-site: ${COOKIE_SAME_SITE:Lax}
+    sameSite: ${COOKIE_SAME_SITE:Lax}
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,metrics
-  endpoint:
-    health:
-      show-details: always
-      probes:
-        enabled: true
-      cache:
-        time-to-live: 60s
-      group:
-        external:
-          include: google
-    prometheus:
-      enabled: true
-  info:
-    git:
-      enabled: true
-      mode: full
-    build:
-      enabled: true
-  metrics:
-    tags:
-      application: fullstack-starter
-
-spring:
-  profiles:
-    group:
-      local: plain-log
-  application:
-    name: fullstack-starter
+  metricsApplicationTag: fullstack-starter
 
 logging:
-  structured:
-    format:
-      console: logstash
-    json:
-      add:
-        git_commit: "@git.commit.id.abbrev@"
-        app_version: "@project.version@"
-        service: ${spring.application.name}
-      stacktrace:
-        root: first
-        max-length: 2048
-        include-common-frames: false
-        include-hashes: true
-  level:
+  structuredFormat: logstash
+  levels:
     WireMock: warn

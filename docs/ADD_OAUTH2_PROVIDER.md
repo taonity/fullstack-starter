@@ -1,95 +1,78 @@
 # Adding / Changing OAuth2 Providers
 
-This template uses Google OAuth2. Here's how to add other providers or switch entirely.
+This template uses Google OAuth2 via a hand-rolled authorization-code flow (`security/oauth/OAuthService`
++ `security/oauth/OAuthRoutes`). A single provider registration is active at a time, selected by the
+active profile (e.g. `stub-google`, `prod-google`). Here's how to point it at a different provider.
 
-## Adding a New Provider (e.g., GitHub)
+## Configuring a Provider (e.g., GitHub)
 
-### 1. Spring Security Configuration
+### 1. Provider configuration
 
-In `application.yaml`, add under `spring.security.oauth2.client`:
+In a profile YAML (e.g. `application-prod-github.yaml`), add the `oauth` block. The schema maps to
+`config/AppConfig.kt` (`OAuthConfig`):
 
 ```yaml
-spring:
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope: read:user,user:email
-        provider:
-          github:
-            authorization-uri: https://github.com/login/oauth/authorize
-            token-uri: https://github.com/login/oauth/access_token
-            user-info-uri: https://api.github.com/user
+oauth:
+  registration:
+    registrationId: github
+    clientId: ${GITHUB_CLIENT_ID}
+    clientSecret: ${GITHUB_CLIENT_SECRET}
+    redirectUri: http://127.0.0.1:8080/login/oauth2/code/github
+    scope: read:user,user:email
+  provider:
+    authorizationUri: https://github.com/login/oauth/authorize
+    tokenUri: https://github.com/login/oauth/access_token
+    userInfoUri: https://api.github.com/user
 ```
 
-### 2. Update Security Config
+The OAuth routes are generic: `GET /oauth2/authorization/{registrationId}` and
+`GET /login/oauth2/code/{registrationId}` match the configured `registrationId` — no per-provider
+security filter chain to edit.
 
-In `SecurityConfig.kt`, the security filter chain already supports multiple providers. Just ensure the `permitAll()` patterns include the new callback URL.
+### 2. Map the provider's user-info
 
-### 3. Update the UserPrincipal
-
-You have two approaches:
-
-**A) Unified principal** — Modify `GoogleUserPrincipal` to become a generic `AppUserPrincipal` that handles different attribute schemas.
-
-**B) Provider-specific principals** — Create a `GitHubUserPrincipal` and update `OAuth2UserPersistenceService` to detect the provider and create the right principal.
-
-### 4. Update OAuth2UserPersistenceService
+`OAuthService.toUserinfo()` maps the user-info JSON to the internal model. Different providers use
+different attribute names, so adjust the keys (GitHub uses `id`/`login` instead of `sub`):
 
 ```kotlin
-override fun loadUser(userRequest: OAuth2UserRequest?): OAuth2User {
-    val validatedUserRequest = requireNotNull(userRequest)
-    val oAuth2User = super.loadUser(validatedUserRequest)
-
-    val registrationId = validatedUserRequest.clientRegistration.registrationId
-    return when (registrationId) {
-        "google" -> GoogleUserPrincipal.of(oAuth2User)
-        "github" -> GitHubUserPrincipal.of(oAuth2User)
-        else -> throw IllegalArgumentException("Unknown provider: $registrationId")
-    }
+private fun toUserinfo(attributes: Map<String, Any?>): Userinfo {
+    val userinfo = Userinfo()
+    userinfo.id = attributes["id"]?.toString()        // GitHub: numeric id
+    userinfo.email = attributes["email"] as? String
+    userinfo.name = (attributes["name"] ?: attributes["login"]) as? String
+    userinfo.picture = attributes["avatar_url"] as? String
+    return userinfo
 }
 ```
 
-### 5. Update User Entity
+If you need provider-specific validation, adapt `SafeGoogleUserInfo.fromApi(...)` (or introduce a
+provider-agnostic equivalent) — it is where required fields are enforced before the user is persisted.
 
-You may want to make the user entity provider-agnostic:
+### 3. User Entity
 
-```kotlin
-@Entity
-@Table(name = "app_user")
-class UserEntity(
-    @Id val id: String,          // provider-specific ID
-    var provider: String,        // "google", "github"
-    var email: String,
-    var displayName: String,
-    var pictureUrl: String? = null
-)
-```
+The `app_user` table is keyed by the provider's stable user id (`UsersTable.googleId` / `UserEntity`).
+To make it provider-agnostic, rename the column via a Flyway migration and optionally add a `provider`
+column; update `db/UsersTable.kt` and `user/entity/UserEntity.kt` accordingly.
 
-### 6. Frontend Login Buttons
+### 4. Frontend Login Buttons
 
-Update `frontend/src/app/(app)/page.tsx` to show login buttons for each provider:
+Update `frontend/src/app/(app)/page.tsx` to link to the configured registration id:
 
 ```tsx
-<a href={`${config.publicBackendUrl}/oauth2/authorization/google-fullstack-starter`}>Sign in with Google</a>
 <a href={`${config.publicBackendUrl}/oauth2/authorization/github`}>Sign in with GitHub</a>
 ```
 
-## Replacing Google with a Different Provider Entirely
+## Replacing Google Entirely
 
-1. Remove `google` registration from `application.yaml`
-2. Add new provider registration
-3. Create a new `XxxUserPrincipal` class
-4. Update `OAuth2UserPersistenceService` to handle the new attributes
-5. Rename `google-contracts/` to match (e.g., `github-contracts/`) and update WireMock stubs
-6. Update the `stub-google` profile to `stub-yourprovider`
+1. Create a `prod-<provider>` (and optional `stub-<provider>`) profile with the `oauth` block above
+2. Adjust `OAuthService.toUserinfo()` (and `SafeGoogleUserInfo`) for the new attributes
+3. Update the frontend login link to `/oauth2/authorization/<registrationId>`
+4. For local dev, add a WireMock stubs module (like `google-stubs/`) and register it in `settings.gradle.kts`
+5. Point the `stub-<provider>` profile's `wiremock.classpathRoot` at the new stubs
 
 ## WireMock Stubs for Local Dev
 
-For each provider, create stubs in a contracts module:
+For each provider, add stubs under a stubs module's `src/main/resources/wiremock/<provider>/mappings/`:
 
 ```json
 {
@@ -109,3 +92,4 @@ For each provider, create stubs in a contracts module:
   }
 }
 ```
+

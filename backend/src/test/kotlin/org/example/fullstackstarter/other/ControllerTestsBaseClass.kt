@@ -1,49 +1,57 @@
 package org.example.fullstackstarter.other
 
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
-import org.springframework.mock.web.MockHttpSession
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
-import org.springframework.web.util.UriComponentsBuilder
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.http.Url
+import io.ktor.http.setCookie
+import io.ktor.server.testing.ApplicationTestBuilder
+import io.ktor.server.testing.testApplication
+import org.example.fullstackstarter.config.ConfigLoader
+import org.example.fullstackstarter.config.WireMockConfig
+import org.example.fullstackstarter.local.GoogleWireMockServerManager
+import org.example.fullstackstarter.module
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("h2", "stub-google")
-class ControllerTestsBaseClass {
+/**
+ * Base class for HTTP-level tests. Boots the real Ktor application via the test host with the
+ * `h2` + `stub-google` profiles (replaces the former `@SpringBootTest` + `MockMvc` setup).
+ *
+ * The Google OAuth2 stub (WireMock) is started once per JVM here and shared across all test
+ * methods; the application's own WireMock is disabled via the `wiremock-off` profile so that the
+ * per-test application lifecycle does not repeatedly bind the fixed stub port.
+ */
+abstract class ControllerTestsBaseClass {
 
-    @Autowired
-    lateinit var mockMvc: MockMvc
+    protected val sessionCookieName = "JSESSIONID-TEST"
 
-    fun authorizeOAuth2(): MockHttpSession {
-        val session = MockHttpSession()
-        val authResult = mockMvc.perform(
-            get("/oauth2/authorization/google-fullstack-starter").session(session)
-        )
-            .andExpect(status().is3xxRedirection)
-            .andReturn()
-        val state = getState(authResult)
-        mockMvc.perform(
-            get("/login/oauth2/code/google-fullstack-starter")
-                .session(session)
-                .param("code", "stub-auth-code")
-                .param("state", state)
-        )
-            .andExpect(status().is3xxRedirection)
-        return session
+    protected fun withApp(block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
+        application {
+            module(ConfigLoader.load(arrayOf("--app.profiles=h2,stub-google,wiremock-off")))
+        }
+        block()
     }
 
-    private fun getState(authenticationMvcResult: org.springframework.test.web.servlet.MvcResult): String {
-        val location = authenticationMvcResult.response.getHeader("Location")
-        val rawState = UriComponentsBuilder.fromUriString(location!!)
-            .build()
-            .queryParams
-            .getFirst("state")
-        return URLDecoder.decode(rawState, StandardCharsets.UTF_8)
+    /** Drives the stub OAuth2 authorization-code flow and returns the value of the session cookie. */
+    protected suspend fun ApplicationTestBuilder.authorizeOAuth2(): String {
+        val client = createClient { followRedirects = false }
+
+        val authResponse = client.get("/oauth2/authorization/google-fullstack-starter")
+        val location = authResponse.headers["Location"] ?: error("Missing authorize redirect Location")
+        val state = Url(location).parameters["state"] ?: error("Missing state parameter")
+        val oauthStateCookie = authResponse.setCookie().first { it.name == "OAUTH_STATE" }.value
+
+        val callbackResponse = client.get(
+            "/login/oauth2/code/google-fullstack-starter?code=stub-auth-code&state=$state"
+        ) {
+            header("Cookie", "OAUTH_STATE=$oauthStateCookie")
+        }
+        return callbackResponse.setCookie().first { it.name == sessionCookieName }.value
+    }
+
+    companion object {
+        @Suppress("unused")
+        private val wireMock: GoogleWireMockServerManager =
+            GoogleWireMockServerManager(
+                WireMockConfig(enabled = true, port = 9561, classpathRoot = "wiremock/google")
+            ).also { it.start() }
     }
 }

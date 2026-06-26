@@ -1,13 +1,7 @@
 package org.example.fullstackstarter.user.entity
 
-import jakarta.persistence.Entity
-import jakarta.persistence.Id
-import jakarta.persistence.Table
-
-@Entity
-@Table(name = "app_user")
+/** Plain domain object for an application user (persisted via Exposed in [org.example.fullstackstarter.user.repository.UserRepository]). */
 class UserEntity(
-    @Id
     val googleId: String,
     var email: String,
     var displayName: String,

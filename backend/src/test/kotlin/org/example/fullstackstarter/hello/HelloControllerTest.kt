@@ -1,37 +1,39 @@
 package org.example.fullstackstarter.hello
 
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
+import org.assertj.core.api.Assertions.assertThat
 import org.example.fullstackstarter.other.ControllerTestsBaseClass
 import org.junit.jupiter.api.Test
-import org.springframework.test.annotation.DirtiesContext
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@DirtiesContext
 class HelloControllerTest : ControllerTestsBaseClass() {
 
     @Test
-    fun `root endpoint is publicly accessible`() {
-        mockMvc.perform(get("/"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("ok"))
+    fun `root endpoint is publicly accessible`() = withApp {
+        val response = client.get("/")
+        assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+        assertThat(response.bodyAsText()).contains("\"status\":\"ok\"")
     }
 
     @Test
-    fun `hello endpoint requires authentication`() {
-        mockMvc.perform(get("/hello"))
-            .andExpect(status().isUnauthorized)
+    fun `hello endpoint requires authentication`() = withApp {
+        val response = createClient { followRedirects = false }.get("/hello")
+        assertThat(response.status).isEqualTo(HttpStatusCode.Unauthorized)
     }
 
     @Test
-    fun `hello endpoint returns greeting for authenticated user`() {
-        val mockHttpSession = authorizeOAuth2()
+    fun `hello endpoint returns greeting for authenticated user`() = withApp {
+        val sessionCookie = authorizeOAuth2()
 
-        mockMvc.perform(
-            get("/hello").session(mockHttpSession)
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.message").value("Hello, Test User!"))
-            .andExpect(jsonPath("$.email").value("test@example.com"))
+        val response = client.get("/hello") {
+            header("Cookie", "$sessionCookieName=$sessionCookie")
+        }
+
+        assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+        val body = response.bodyAsText()
+        assertThat(body).contains("Hello, Test User!")
+        assertThat(body).contains("test@example.com")
     }
 }

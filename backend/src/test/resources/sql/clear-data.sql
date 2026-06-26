@@ -1,1 +1,0 @@
-DELETE FROM app_user;

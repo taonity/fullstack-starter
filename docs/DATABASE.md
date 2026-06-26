@@ -29,7 +29,7 @@ When running with the `h2` profile, Flyway reads migrations from `filesystem:tem
 
 Run from the project root:
 ```bash
-mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
+./gradlew :backend:run --args="--app.profiles=h2,stub-google,local"
 ```
 
 ## Production (PostgreSQL)

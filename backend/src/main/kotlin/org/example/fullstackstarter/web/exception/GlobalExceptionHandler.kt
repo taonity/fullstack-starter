@@ -1,55 +1,51 @@
 package org.example.fullstackstarter.web.exception
 
-import tools.jackson.databind.exc.MismatchedInputException
-import tools.jackson.module.kotlin.KotlinInvalidNullException
+import com.fasterxml.jackson.databind.exc.MismatchedInputException
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
-import org.springframework.http.converter.HttpMessageNotReadableException
-import org.springframework.web.bind.MethodArgumentNotValidException
-import org.springframework.web.bind.annotation.ExceptionHandler
-import org.springframework.web.bind.annotation.ResponseStatus
-import org.springframework.web.bind.annotation.RestControllerAdvice
-import org.springframework.web.servlet.resource.NoResourceFoundException
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.install
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.response.respond
+import io.ktor.server.routing.RoutingCall
 
-@RestControllerAdvice
-class GlobalExceptionHandler {
-    companion object {
-        private val LOGGER = KotlinLogging.logger {}
-    }
+/** Thrown to signal a request validation failure (mapped to 400 / VALIDATION_ERROR). */
+class ValidationException(message: String) : RuntimeException(message)
 
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    @ExceptionHandler(Exception::class)
-    fun handleException(e: Exception): ResponseEntity<ServerErrorResponse> {
-        LOGGER.error(e) { "Unhandled exception" }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ServerErrorResponse(ServerErrorCode.UNKNOWN))
-    }
+private val LOGGER = KotlinLogging.logger("org.example.fullstackstarter.web.exception.GlobalExceptionHandler")
 
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler(NoResourceFoundException::class)
-    fun handleNotFound(e: NoResourceFoundException) {
-        LOGGER.debug(e) {}
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun handleMissingFieldExceptions(e: HttpMessageNotReadableException): ResponseEntity<ClientErrorResponse> {
-        val cause = e.cause
-        return when (cause) {
-            is KotlinInvalidNullException, is MismatchedInputException -> {
-                ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ClientErrorResponse(ClientErrorCode.MISSING_FIELD, cause.message ?: ""))
-            }
-            else -> {
-                ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ClientErrorResponse(ClientErrorCode.MISSING_FIELD, e.message ?: ""))
-            }
+/**
+ * Centralised exception handling (replaces the Spring `@RestControllerAdvice`). Installs Ktor's
+ * StatusPages plugin and maps exceptions to the same JSON error payloads / HTTP statuses as before.
+ */
+fun io.ktor.server.application.Application.configureStatusPages() {
+    install(StatusPages) {
+        // 400 - malformed/missing request body (was HttpMessageNotReadableException)
+        exception<BadRequestException> { call, cause ->
+            val message = (cause.cause as? MismatchedInputException)?.message ?: cause.message ?: ""
+            call.respond(HttpStatusCode.BadRequest, ClientErrorResponse(ClientErrorCode.MISSING_FIELD, message))
         }
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidationExceptions(e: MethodArgumentNotValidException): ResponseEntity<ClientErrorResponse> {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(ClientErrorResponse(ClientErrorCode.VALIDATION_ERROR, e.message))
+        exception<MismatchedInputException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                ClientErrorResponse(ClientErrorCode.MISSING_FIELD, cause.message ?: "")
+            )
+        }
+        // 400 - bean validation failures (was MethodArgumentNotValidException)
+        exception<ValidationException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                ClientErrorResponse(ClientErrorCode.VALIDATION_ERROR, cause.message ?: "")
+            )
+        }
+        // 500 - anything else
+        exception<Throwable> { call, cause ->
+            LOGGER.error(cause) { "Unhandled exception" }
+            call.respond(HttpStatusCode.InternalServerError, ServerErrorResponse(ServerErrorCode.UNKNOWN))
+        }
+        // 404 - unmatched routes (was NoResourceFoundException)
+        status(HttpStatusCode.NotFound) { call, _ ->
+            (call as? RoutingCall)?.let { LOGGER.debug { "No resource found: ${it.request.local.uri}" } }
+        }
     }
 }

@@ -1,52 +1,57 @@
 package org.example.fullstackstarter.health
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.health.contributor.Health
-import org.springframework.boot.health.contributor.HealthIndicator
-import org.springframework.stereotype.Component
-import org.springframework.web.client.RestClient
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import java.time.Duration
 import java.time.Instant
 
-@Component("google")
+/**
+ * Reports whether Google's user-info endpoint is reachable (a 4xx still means reachable, only 5xx
+ * or connection failures are DOWN). Replaces the Spring Boot custom `HealthIndicator`.
+ */
 class GoogleHealthIndicator(
-    @Value("\${spring.security.oauth2.client.provider.google.user-info-uri}") private val userInfoUri: String,
+    private val userInfoUri: String,
+    private val httpClient: HttpClient
 ) : HealthIndicator {
+
+    override val name: String = "google"
 
     companion object {
         private val LOGGER = KotlinLogging.logger {}
         private const val MAX_BODY_PREVIEW_CHARS = 160
-        private val REST_CLIENT = RestClient.create()
     }
 
-    override fun health(): Health {
+    override suspend fun health(): Health {
         val start = Instant.now()
         return try {
-            val responseEntity = REST_CLIENT.get()
-                .uri(userInfoUri)
-                .retrieve()
-                .onStatus({ it.is4xxClientError }) { _, _ -> } // 4xx = reachable, suppress default error
-                .toEntity(String::class.java)
+            val response = httpClient.get(userInfoUri)
             val elapsedMs = Duration.between(start, Instant.now()).toMillis()
-            val statusCode = responseEntity.statusCode
-            // 4xx (e.g. 401 Unauthorized without a token) still means Google is reachable
-            val builder = if (!statusCode.is5xxServerError) Health.up() else Health.down()
-            builder.withDetail("url", userInfoUri)
-                .withDetail("statusCode", statusCode.value())
-                .withDetail("responseTimeMs", elapsedMs)
-            if (statusCode.is5xxServerError) {
-                builder.withDetail("responsePreview", responseEntity.body?.take(MAX_BODY_PREVIEW_CHARS) ?: "")
+            val statusCode = response.status.value
+            val is5xx = statusCode in 500..599
+            val details = linkedMapOf<String, Any?>(
+                "url" to userInfoUri,
+                "statusCode" to statusCode,
+                "responseTimeMs" to elapsedMs
+            )
+            if (is5xx) {
+                details["responsePreview"] = response.bodyAsText().take(MAX_BODY_PREVIEW_CHARS)
+                Health.down(details)
+            } else {
+                // 4xx (e.g. 401 without a token) still means Google is reachable
+                Health.up(details)
             }
-            builder.build()
         } catch (exception: Exception) {
             val elapsedMs = Duration.between(start, Instant.now()).toMillis()
             LOGGER.warn { "Google availability check failed for $userInfoUri" }
-            Health.down()
-                .withDetail("url", userInfoUri)
-                .withDetail("responseTimeMs", elapsedMs)
-                .withDetail("error", exception.message ?: exception::class.simpleName ?: "unknown")
-                .build()
+            Health.down(
+                linkedMapOf(
+                    "url" to userInfoUri,
+                    "responseTimeMs" to elapsedMs,
+                    "error" to (exception.message ?: exception::class.simpleName ?: "unknown")
+                )
+            )
         }
     }
 }

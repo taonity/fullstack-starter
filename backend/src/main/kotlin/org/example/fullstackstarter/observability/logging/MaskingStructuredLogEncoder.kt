@@ -1,9 +1,10 @@
 package org.example.fullstackstarter.observability.logging
 
 import ch.qos.logback.classic.spi.ILoggingEvent
-import org.springframework.boot.logging.logback.StructuredLogEncoder
+import net.logstash.logback.encoder.LogstashEncoder
 
-class MaskingStructuredLogEncoder : StructuredLogEncoder() {
+/** Logstash JSON encoder that masks secrets in the serialized output (replaces the Spring Boot StructuredLogEncoder). */
+class MaskingStructuredLogEncoder : LogstashEncoder() {
 
     private val masker = LogMasker()
 
@@ -14,7 +15,6 @@ class MaskingStructuredLogEncoder : StructuredLogEncoder() {
     override fun encode(event: ILoggingEvent): ByteArray {
         val raw = super.encode(event)
         val masked = masker.mask(String(raw, Charsets.UTF_8))
-        val cleaned = masked.replace(Regex(",\"level_value\":\\d+|\"level_value\":\\d+,"), "")
-        return cleaned.toByteArray(Charsets.UTF_8)
+        return masked.toByteArray(Charsets.UTF_8)
     }
 }

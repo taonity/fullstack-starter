@@ -4,16 +4,16 @@
 
 ### Backend
 
-From the project root:
+From the project root (builds the image into the local Docker daemon via jib):
 ```bash
-mvn -pl backend spring-boot:build-image -DskipTests
+./gradlew :backend:jibDockerBuild
 ```
 
-Or with a Dockerfile:
+Or with a Dockerfile over the runnable fat jar:
 ```dockerfile
-FROM eclipse-temurin:17-jre
+FROM amazoncorretto:17
 WORKDIR /app
-COPY backend/target/backend-*.jar app.jar
+COPY backend/build/libs/backend-all.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 

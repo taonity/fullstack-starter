@@ -4,17 +4,15 @@ This guide covers adding a new external API integration (e.g., Stripe, Twilio, G
 
 ## Step 1: Add Dependencies
 
-In `backend/pom.xml` add the client library or use Spring's `RestClient`:
+The Ktor HTTP client is already on the classpath. Only add a dependency if you need a dedicated SDK — in `backend/build.gradle.kts`:
 
-```xml
-<dependency>
-    <groupId>com.example</groupId>
-    <artifactId>example-client</artifactId>
-    <version>1.0.0</version>
-</dependency>
+```kotlin
+dependencies {
+    implementation("com.example:example-client:1.0.0")
+}
 ```
 
-Or use Spring's built-in `RestClient` (no extra dependency needed).
+Otherwise reuse the shared `HttpClient` (CIO) registered in Koin — no extra dependency needed.
 
 ## Step 2: Configuration
 
@@ -33,78 +31,78 @@ integration:
 ```
 integration/
 └── exampleapi/
-    ├── config/
-    │   └── ExampleApiConfig.kt      # RestClient bean config
     ├── service/
-    │   └── ExampleApiService.kt     # Service wrapping API calls
+    │   └── ExampleApiService.kt     # Service wrapping API calls (uses HttpClient)
     ├── dto/
     │   └── ExampleApiResponse.kt    # Response DTOs
     └── exception/
         └── ExampleApiException.kt   # Custom exceptions
 ```
 
-## Step 4: RestClient Configuration
+## Step 4: Register the client in Koin
+
+Add the service (and any dedicated client) to the Koin module in `di/AppModule.kt`:
 
 ```kotlin
-@Configuration
-class ExampleApiConfig(
-    @Value("\${integration.example-api.base-url}") private val baseUrl: String,
-    @Value("\${integration.example-api.api-key}") private val apiKey: String
-) {
-    @Bean
-    fun exampleApiClient(): RestClient {
-        return RestClient.builder()
-            .baseUrl(baseUrl)
-            .defaultHeader("Authorization", "Bearer $apiKey")
-            .build()
-    }
+single {
+    ExampleApiService(
+        httpClient = get(),
+        baseUrl = appConfig.integration.exampleApi.baseUrl,
+        apiKey = appConfig.integration.exampleApi.apiKey
+    )
 }
 ```
 
 ## Step 5: Service Implementation
 
 ```kotlin
-@Service
 class ExampleApiService(
-    private val exampleApiClient: RestClient
+    private val httpClient: HttpClient,
+    private val baseUrl: String,
+    private val apiKey: String
 ) {
     companion object {
         private val LOGGER = KotlinLogging.logger {}
     }
 
-    fun fetchData(id: String): ExampleApiResponse {
+    suspend fun fetchData(id: String): ExampleApiResponse {
         LOGGER.info { "Fetching data for $id" }
-        return exampleApiClient.get()
-            .uri("/data/{id}", id)
-            .retrieve()
-            .body(ExampleApiResponse::class.java)
-            ?: throw ExampleApiException("No data returned for $id")
+        val response = httpClient.get("$baseUrl/data/$id") {
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+        }
+        if (!response.status.isSuccess()) {
+            throw ExampleApiException("No data returned for $id (status ${response.status})")
+        }
+        return response.body()
     }
 }
 ```
 
 ## Step 6: WireMock Stubs for Testing
 
-Create a WireMock contract module (like `google-contracts/`):
+Create a WireMock contract module (like `google-stubs/`):
 
-1. Create `example-contracts/pom.xml` (copy from `google-contracts/pom.xml`)
-2. Add WireMock mappings in `src/main/resources/mappings/`
+1. Create `example-stubs/build.gradle.kts` (copy from `google-stubs/build.gradle.kts`)
+2. Add WireMock mappings in `src/main/resources/wiremock/example/mappings/`
 3. Create a stub profile in `application-stub-example.yaml`
-4. Add module to root `pom.xml`
+4. Add the module to `settings.gradle.kts`
 
 ## Step 7: Health Check (Optional)
 
 ```kotlin
-@Component
 class ExampleApiHealthIndicator(
-    private val exampleApiClient: RestClient
-) : AbstractHealthIndicator() {
-    override fun doHealthCheck(builder: Health.Builder) {
-        val response = exampleApiClient.get().uri("/health").retrieve().toBodilessEntity()
-        if (response.statusCode.is2xxSuccessful) {
-            builder.up()
-        } else {
-            builder.down()
+    private val httpClient: HttpClient,
+    private val baseUrl: String
+) : HealthIndicator {
+
+    override val name: String = "example-api"
+
+    override suspend fun health(): Health {
+        return try {
+            val response = httpClient.get("$baseUrl/health")
+            if (response.status.value in 500..599) Health.down() else Health.up()
+        } catch (exception: Exception) {
+            Health.down(linkedMapOf("error" to (exception.message ?: "unknown")))
         }
     }
 }

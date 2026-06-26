@@ -1,10 +1,12 @@
 package org.example.fullstackstarter.advisory
 
-import org.springframework.stereotype.Component
-import org.springframework.web.context.annotation.RequestScope
+import io.ktor.server.application.ApplicationCall
+import io.ktor.util.AttributeKey
 
-@Component
-@RequestScope
+/**
+ * Per-call collector of advisories. The former Spring `@RequestScope` bean is replaced by a value
+ * stored in [ApplicationCall.attributes]; use [ApplicationCall.responseAttachments] to access it.
+ */
 class ResponseAttachments {
     private val notices: MutableMap<Advisory, List<String>> = linkedMapOf()
 
@@ -24,4 +26,12 @@ class ResponseAttachments {
 
     fun advisoryDtos(): Set<AdvisoryDto> =
         notices.entries.map { (advisory, args) -> advisory.toDto(args) }.toSet()
+
+    companion object {
+        val KEY = AttributeKey<ResponseAttachments>("ResponseAttachments")
+    }
 }
+
+/** Lazily creates and returns the [ResponseAttachments] bound to this call. */
+val ApplicationCall.responseAttachments: ResponseAttachments
+    get() = attributes.computeIfAbsent(ResponseAttachments.KEY) { ResponseAttachments() }

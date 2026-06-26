@@ -1,7 +1,7 @@
 package org.example.fullstackstarter.security.exception
 
-import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatusCode
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 
 class RestClientErrorException(
     httpStatusCode: HttpStatusCode,
@@ -18,7 +18,7 @@ class RestClientErrorException(
             requestHeadersJson: String,
             body: String
         ): String {
-            return "Request failed: $httpStatusCode, [$method] $uri, request headers: $requestHeadersJson, response body: [$body]"
+            return "Request failed: $httpStatusCode, [${method.value}] $uri, request headers: $requestHeadersJson, response body: [$body]"
         }
     }
 }

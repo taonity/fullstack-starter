@@ -9,7 +9,7 @@ A template for building full-stack web applications with Google OAuth2 authentic
 - Frontend login page that works independently of backend availability
 
 ### Project structure
-- Backend — Kotlin Spring Boot 4 application on Maven
+- Backend — Kotlin Ktor application on Gradle
 - Frontend — TypeScript Next.js with client and server parts
 - Deployment — Docker Compose template with backend, frontend, Postgres, and Flyway
 
@@ -29,14 +29,14 @@ The project has all its resources stubbed for the most comfortable local develop
 Only one profile from a resource group can be used. For example, the set for the production environment looks like
 `postgres,prod-google`, and for local development — `h2,stub-google,local`.
 
-Use IntelliJ to run the backend locally. Add a Run/Debug configuration with Main class `org.example.fullstackstarter.MainKt`
-and VM options `-Dspring.profiles.active=h2,stub-google,local` and run the backend.
+Use IntelliJ to run the backend locally. Add a Run/Debug configuration with Main class `org.example.fullstackstarter.ApplicationKt`
+and program arguments `--app.profiles=h2,stub-google,local` and run the backend.
 
-To run it from PS use a command like this:
+To run it from PS use a command like this (requires JDK 17):
 ```bash
-mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
+./gradlew :backend:run --args="--app.profiles=h2,stub-google,local"
 ```
-h
+
 #### Frontend
 I recommend opening /frontend directory in VS Code. Run `npm install`, and then `npm run dev`.
 
@@ -51,15 +51,15 @@ docker network create fullstack-starter-shared
 Run this
 ```bash
 # Prepares Docker Compose templates for running. Make sure you are on the last released tag in git.
-mvn clean -P build-automation-docker-compose-project compile -DskipTests=true
+./gradlew :backend:prepareDockerTest
 # Runs Docker Compose template with images from Dockerhub. Make sure you placed all required env vars.
-docker compose -f backend/target/docker/test/docker-compose.yml up -d
+docker compose -f backend/build/docker/test/docker-compose.yml up -d
 ```
 
 Or you can build the images yourself by following the instructions. Run this
 ```bash
-# Builds all modules 
-mvn clean -P build-docker-image,build-automation-docker-compose-project install -DskipTests=true
+# Builds the backend Docker image into the local Docker daemon (also stages the compose templates)
+./gradlew :backend:jibDockerBuild
 # Installs npm modules for Next.js frontend
 npm install --prefix frontend/
 # Builds the latest image of the frontend app using Dockerfile

@@ -1,9 +1,8 @@
-postgres-url: jdbc:postgresql://${POSTGRES_ADDRESS:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:fullstack_starter_db}
+datasource:
+  url: jdbc:postgresql://${POSTGRES_ADDRESS:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:fullstack_starter_db}
+  username: ${POSTGRES_APP_USER:d}
+  password: ${POSTGRES_APP_PASSWORD:d}
+  driverClassName: org.postgresql.Driver
 
-spring:
-  datasource:
-    url: ${postgres-url}
-    username: ${POSTGRES_APP_USER:d}
-    password: ${POSTGRES_APP_PASSWORD:d}
-  flyway:
-    enabled: false
+flyway:
+  enabled: false
