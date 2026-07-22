@@ -7,9 +7,11 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   commitUrl,
+  deploymentTime,
   fetchBackendInfo,
   fetchFrontendInfo,
   flattenInfo,
+  formatRelativeAge,
   type AppInfoSource,
   type InfoRow,
 } from '@/lib/appInfo'
@@ -78,6 +80,8 @@ function InfoCard({
   const loading = source === null
   const rows = loading ? [] : flattenInfo(source.data)
   const available = !loading && rows.length > 0
+  const deployedAt = loading ? null : deploymentTime(source.data)
+  const deployedAgo = formatRelativeAge(deployedAt)
 
   if (available) {
     rowCountCache[label] = rows.length
@@ -97,6 +101,15 @@ function InfoCard({
             </Badge>
           )}
         </CardTitle>
+        {loading ? (
+          <Skeleton className="mt-1 h-3 w-32" />
+        ) : (
+          deployedAgo && (
+            <p className="text-xs text-muted-foreground" title={deployedAt ?? undefined}>
+              Built {deployedAgo}
+            </p>
+          )
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (

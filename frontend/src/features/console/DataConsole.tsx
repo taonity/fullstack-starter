@@ -28,18 +28,19 @@ const ROLE_BADGE: Record<ConsoleRole, 'default' | 'secondary' | 'outline'> = {
   NONE: 'outline',
 }
 
-type TabKey = 'config' | 'admin' | 'about'
+type TabKey = 'about' | 'config' | 'admin'
 
 export default function DataConsole() {
   const [access, setAccess] = useState<AccessInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<TabKey>('config')
+  const [tab, setTab] = useState<TabKey>('about')
+  const [pendingCount, setPendingCount] = useState<number | null>(null)
   // Tabs are mounted lazily on first visit and then kept mounted (see keepMounted below), so
   // switching back to an already-seen tab restores its state instantly instead of replaying the
   // skeleton load. Trade-off: a revisited tab shows data from its first load until the user hits
   // Refresh.
-  const [visited, setVisited] = useState<Set<TabKey>>(() => new Set<TabKey>(['config']))
+  const [visited, setVisited] = useState<Set<TabKey>>(() => new Set<TabKey>(['about']))
 
   const selectTab = useCallback((next: TabKey) => {
     setTab(next)
@@ -65,6 +66,24 @@ export default function DataConsole() {
     void loadAccess()
   }, [loadAccess])
 
+  // Load the pending-request count independently of the Admin tab so the tab badge is accurate
+  // even before an admin opens the tab (the tab is mounted lazily).
+  useEffect(() => {
+    if (!access?.isAdmin) return
+    let active = true
+    consoleApi
+      .listPendingRequests()
+      .then((requests) => {
+        if (active) setPendingCount(requests.length)
+      })
+      .catch(() => {
+        // Non-critical: the Admin tab surfaces its own load error.
+      })
+    return () => {
+      active = false
+    }
+  }, [access?.isAdmin])
+
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
@@ -89,23 +108,26 @@ export default function DataConsole() {
     ) : null
   }
 
+  const hasPending = (pendingCount ?? 0) > 0
   const tabItems: Record<string, string> = {
-    config: 'Config',
-    ...(access.isAdmin ? { admin: 'Admin' } : {}),
     about: 'About',
+    config: 'Config',
+    ...(access.isAdmin
+      ? { admin: hasPending ? `Admin (${pendingCount})` : 'Admin' }
+      : {}),
   }
 
   return (
     <div className="flex flex-col gap-3">
       {error && <ErrorNotification message={error} onClose={() => setError(null)} />}
 
-      <Tabs value={tab} onValueChange={(v) => selectTab((v ?? 'config') as TabKey)}>
+      <Tabs value={tab} onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}>
         <div className="flex items-center justify-between gap-2">
           {/* Mobile: compact dropdown keeps every tab one tap away without hidden horizontal scroll. */}
           <Select
             items={tabItems}
             value={tab}
-            onValueChange={(v) => selectTab((v ?? 'config') as TabKey)}
+            onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}
           >
             <SelectTrigger size="sm" className="h-8 w-36 sm:hidden">
               <SelectValue />
@@ -120,9 +142,22 @@ export default function DataConsole() {
           </Select>
           {/* Tablet and up: full tab bar. */}
           <TabsList variant="line" className="hidden h-9 sm:flex">
-            <TabsTrigger value="config">Config</TabsTrigger>
-            {access.isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
             <TabsTrigger value="about">About</TabsTrigger>
+            <TabsTrigger value="config">Config</TabsTrigger>
+            {access.isAdmin && (
+              <TabsTrigger value="admin" className="gap-1.5">
+                Admin
+                {hasPending && (
+                  <Badge
+                    variant="destructive"
+                    className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px] leading-none tabular-nums"
+                    aria-label={`${pendingCount} pending access request${pendingCount === 1 ? '' : 's'}`}
+                  >
+                    {pendingCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            )}
           </TabsList>
           <div className="flex items-center gap-2">
             <UpgradeAccessControl access={access} onUpdated={setAccess} onError={setError} />
@@ -130,19 +165,25 @@ export default function DataConsole() {
           </div>
         </div>
 
+        <TabsContent value="about" className="pt-2" keepMounted>
+          {visited.has('about') && <AppInfoPanel />}
+        </TabsContent>
+
         <TabsContent value="config" className="pt-2" keepMounted>
           {visited.has('config') && <ConfigTab canEdit={access.isOwner} onError={setError} />}
         </TabsContent>
 
         {access.isAdmin && (
           <TabsContent value="admin" className="pt-2" keepMounted>
-            {visited.has('admin') && <AdminPanel access={access} onError={setError} />}
+            {visited.has('admin') && (
+              <AdminPanel
+                access={access}
+                onError={setError}
+                onPendingCountChange={setPendingCount}
+              />
+            )}
           </TabsContent>
         )}
-
-        <TabsContent value="about" className="pt-2" keepMounted>
-          {visited.has('about') && <AppInfoPanel />}
-        </TabsContent>
       </Tabs>
     </div>
   )

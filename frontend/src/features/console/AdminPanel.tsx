@@ -66,9 +66,11 @@ const AUDIT_COLUMNS: Column<AuditLog>[] = [
 export function AdminPanel({
   access,
   onError,
+  onPendingCountChange,
 }: {
   access: AccessInfo
   onError: (message: string) => void
+  onPendingCountChange?: (count: number) => void
 }) {
   const [requests, setRequests] = useState<PendingRequest[] | null>(null)
   const [grantRoles, setGrantRoles] = useState<Record<string, ConsoleRole>>({})
@@ -78,6 +80,7 @@ export function AdminPanel({
     try {
       const result = await consoleApi.listPendingRequests()
       setRequests(result)
+      onPendingCountChange?.(result.length)
       setGrantRoles(
         Object.fromEntries(
           result.map((r) => [r.googleId, (r.requestedRole ?? 'VIEWER') as ConsoleRole]),
@@ -86,7 +89,7 @@ export function AdminPanel({
     } catch {
       onError('Failed to load access requests.')
     }
-  }, [onError])
+  }, [onError, onPendingCountChange])
 
   useEffect(() => {
     void loadRequests()

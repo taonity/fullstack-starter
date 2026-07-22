@@ -66,6 +66,66 @@ async function fetchInfo(url: string): Promise<InfoObject | null> {
 }
 
 /**
+ * Ordered list of info fields that best represent when the running artifact was built/deployed.
+ * The first field that parses as a valid date wins.
+ */
+const DEPLOYMENT_TIME_KEYS = ['build.time', 'git.build.time', 'git.commit.time'] as const
+
+/**
+ * Returns the ISO timestamp that best represents when the artifact was deployed (its build time),
+ * or null when no usable timestamp is present in the payload.
+ */
+export function deploymentTime(data: InfoObject | null): string | null {
+  if (!data) {
+    return null
+  }
+  const rows = flattenInfo(data)
+  for (const key of DEPLOYMENT_TIME_KEYS) {
+    const row = rows.find((r) => r.key === key)
+    if (row && !Number.isNaN(new Date(row.value).getTime())) {
+      return row.value
+    }
+  }
+  return null
+}
+
+const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
+  ['year', 1000 * 60 * 60 * 24 * 365],
+  ['month', 1000 * 60 * 60 * 24 * 30],
+  ['week', 1000 * 60 * 60 * 24 * 7],
+  ['day', 1000 * 60 * 60 * 24],
+  ['hour', 1000 * 60 * 60],
+  ['minute', 1000 * 60],
+  ['second', 1000],
+]
+
+/**
+ * Formats an ISO timestamp as a human-readable relative age (e.g. "3 days ago", "just now"),
+ * or null when the value is missing/unparseable.
+ */
+export function formatRelativeAge(iso: string | null | undefined): string | null {
+  if (!iso) {
+    return null
+  }
+  const time = new Date(iso).getTime()
+  if (Number.isNaN(time)) {
+    return null
+  }
+  const diff = Date.now() - time
+  const absDiff = Math.abs(diff)
+  if (absDiff < 45_000) {
+    return 'just now'
+  }
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+  for (const [unit, ms] of RELATIVE_UNITS) {
+    if (absDiff >= ms || unit === 'second') {
+      return rtf.format(-Math.round(diff / ms), unit)
+    }
+  }
+  return null
+}
+
+/**
  * Flattens a nested info object into dotted-key rows so that every provided field is
  * rendered regardless of the payload's shape.
  */
