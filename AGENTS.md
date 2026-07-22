@@ -12,7 +12,7 @@ Multi-module Maven monorepo (Spring Boot 4 / Kotlin backend + Next.js TypeScript
 ### Key data flow
 
 1. User logs in via Google OAuth2 → `security/service/OAuth2UserPersistenceService` persists/updates user.
-2. Frontend calls `/api/hello` → Next.js route → backend `/hello` → returns greeting with user info.
+2. Frontend calls `/api/console/access/me` → Next.js route → backend `/console/access/me` → returns the current user's console access info.
 3. All API calls are proxied through Next.js API routes (never call backend directly from client).
 
 ## Build & Run

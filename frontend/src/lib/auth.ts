@@ -6,7 +6,7 @@ import {
 
 export async function fetchAuthenticatedUserStatus() {
   try {
-    const response = await fetchWithTimeout('/api/hello', { timeoutMs: 6000 })
+    const response = await fetchWithTimeout('/api/console/access/me', { timeoutMs: 6000 })
 
     if (response.ok) {
       return { status: 'authenticated' as const, data: await response.json() }

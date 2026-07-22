@@ -12,7 +12,7 @@ mvn test
 mvn -pl backend test
 
 # Single test
-mvn -pl backend test -Dtest=HelloControllerTest
+mvn -pl backend test -Dtest=LazyFetchingArchitectureTest
 ```
 
 ### Test Patterns

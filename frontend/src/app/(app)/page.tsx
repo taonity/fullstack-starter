@@ -10,13 +10,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import DataConsole from '@/features/console/DataConsole'
 import { DevLoginSwitcher } from '@/features/console/DevLoginSwitcher'
 
-interface HelloResponse {
-  message: string
+interface AuthenticatedUser {
   email: string
 }
 
 export default function Home() {
-  const [hello, setHello] = useState<HelloResponse | null>(null)
+  const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -25,7 +24,7 @@ export default function Home() {
       const result = await fetchAuthenticatedUserStatus()
 
       if (result.status === 'authenticated') {
-        setHello(result.data)
+        setUser(result.data)
       } else if (result.status === 'unauthenticated') {
         window.location.href = '/login'
         return
@@ -63,8 +62,8 @@ export default function Home() {
             {loading ? (
               <Skeleton className="h-4 w-40" />
             ) : (
-              hello && (
-                <span className="truncate text-sm text-muted-foreground">{hello.email}</span>
+              user && (
+                <span className="truncate text-sm text-muted-foreground">{user.email}</span>
               )
             )}
           </div>
@@ -75,10 +74,10 @@ export default function Home() {
 
         <main className="pt-4">
           {error && <ErrorNotification message={error} onClose={() => setError(null)} />}
-          {!loading && hello && <DataConsole />}
+          {!loading && user && <DataConsole />}
         </main>
       </div>
-      {!loading && hello && <DevLoginSwitcher />}
+      {!loading && user && <DevLoginSwitcher />}
     </div>
   )
 }

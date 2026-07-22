@@ -48,8 +48,8 @@ export default function LoginPage() {
   }, [])
 
   useEffect(() => {
-    // Check if already authenticated by trying /api/hello
-    fetch('/api/hello')
+    // Check if already authenticated by probing an authenticated endpoint
+    fetch('/api/console/access/me')
       .then((res) => {
         if (res.ok) {
           window.location.href = '/'

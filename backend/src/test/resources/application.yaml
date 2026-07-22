@@ -3,6 +3,7 @@ server:
   forward-headers-strategy: native
   servlet:
     session:
+      timeout: 7d
       cookie:
         domain: 127.0.0.1
         name: JSESSIONID-TEST
@@ -35,6 +36,12 @@ app:
   cookie:
     secure: false
     same-site: Lax
+  console:
+    max-page-size: 100
+  retention:
+    audit:
+      retention-days: 14
+      cron: "0 30 3 * * *"
 
 #logging:
 #  level:
