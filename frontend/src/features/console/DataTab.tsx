@@ -7,6 +7,7 @@ import {
   ArrowUpWideNarrow,
   ChevronDown,
   ChevronRight,
+  Loader2,
   RotateCw,
   Trash2,
 } from 'lucide-react'
@@ -153,19 +154,21 @@ export function DataTab<T>({
   )
 
   // Debounce the search box; a new search always starts from the first page.
+  // Uses a silent reload so the existing rows stay visible with just a small spinner instead of
+  // swapping the table out for skeletons on every keystroke.
   const onSearchChange = (value: string) => {
     setQuery(value)
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => {
       setActiveQuery(value)
-      void reload(0, size, value, field, direction)
+      void reload(0, size, value, field, direction, { silent: true })
     }, 300)
   }
 
   const onFieldChange = (next: string) => {
     setField(next)
     if (activeQuery.trim()) {
-      void reload(0, size, activeQuery, next, direction)
+      void reload(0, size, activeQuery, next, direction, { silent: true })
     }
   }
 
@@ -263,12 +266,20 @@ export function DataTab<T>({
               </SelectContent>
             </Select>
           )}
-          <Input
-            className="h-7 w-full sm:w-56"
-            placeholder="Search all rows…"
-            value={query}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
+          <div className="relative w-full sm:w-56">
+            <Input
+              className="h-7 w-full pr-7"
+              placeholder="Search all rows…"
+              value={query}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            {refreshing && (
+              <Loader2
+                className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground"
+                aria-label="Loading"
+              />
+            )}
+          </div>
           {searching && data && (
             <span className="text-xs text-muted-foreground">
               {data.totalElements} match{data.totalElements === 1 ? '' : 'es'} across all rows
