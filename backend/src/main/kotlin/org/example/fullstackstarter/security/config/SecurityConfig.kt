@@ -38,7 +38,8 @@ class SecurityConfig(
                 requests.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
                     .requestMatchers(
                         "/actuator/**",
-                        "/"
+                        "/",
+                        "/dev/**"
                     ).permitAll()
                     .anyRequest().authenticated()
             }

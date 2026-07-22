@@ -13,6 +13,19 @@ app:
   cookie:
     secure: ${COOKIE_SECURE:true}
     same-site: ${COOKIE_SAME_SITE:Lax}
+  console:
+    # Comma-separated Google account emails bootstrapped as data-console owners on login.
+    owner-emails: ${CONSOLE_OWNER_EMAILS:}
+    # Comma-separated Google account emails bootstrapped as data-console admins on login.
+    admin-emails: ${CONSOLE_ADMIN_EMAILS:}
+    # Upper bound on page size for console list endpoints (requested sizes are clamped to this).
+    max-page-size: 100
+  retention:
+    # Audit-log retention: entries older than retention-days are purged on the cron schedule.
+    # The cron is honoured live by the dynamic scheduler, so console edits apply without a restart.
+    audit:
+      retention-days: 14
+      cron: "0 30 3 * * *"
 
 management:
   endpoints:
