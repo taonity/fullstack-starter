@@ -128,3 +128,5 @@ Without this configuration, the `approve-prod` job will pass automatically with 
 - [docs/DATABASE.md](docs/DATABASE.md) — Database migrations and schema management
 - [docs/TESTING.md](docs/TESTING.md) — Testing patterns and conventions
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Docker deployment guide
+
+Never put valuse with # in env vars
