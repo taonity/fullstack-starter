@@ -8,7 +8,7 @@ SQL migrations live in `templates/docker/flyway/sql/tables/`.
 
 ## Naming Convention
 
-```
+```ini
 V{version}__{description}.sql
 ```
 
@@ -17,7 +17,8 @@ V{version}__{description}.sql
 - Description uses snake_case
 
 Examples:
-```
+
+```ini
 V100000__create_user_table.sql
 V100001__add_profile_columns.sql
 V100002__create_orders_table.sql
@@ -28,6 +29,7 @@ V100002__create_orders_table.sql
 When running with the `h2` profile, Flyway reads migrations from `filesystem:templates/docker/flyway/sql/tables/`. The database is automatically cleaned and rebuilt on each start (via `flyway-clean-migrate` profile).
 
 Run from the project root:
+
 ```bash
 mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
 ```
@@ -39,6 +41,7 @@ In production, Flyway runs as a separate Docker container before the app starts 
 ## Writing Migrations
 
 ### Create a table
+
 ```sql
 -- V100001__create_orders_table.sql
 CREATE TABLE orders (
@@ -50,6 +53,7 @@ CREATE TABLE orders (
 ```
 
 ### Add a column
+
 ```sql
 -- V100002__add_order_status.sql
 ALTER TABLE orders ADD COLUMN status VARCHAR NOT NULL DEFAULT 'pending';

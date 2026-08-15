@@ -17,16 +17,24 @@ Multi-module Maven monorepo (Spring Boot 4 / Kotlin backend + Next.js TypeScript
 
 ## Build & Run
 
+Run each command from the repository root.
+
+Full build:
+
 ```bash
-# Full build (from root)
 mvn clean install
+```
 
-# Run backend locally
+Run backend locally:
+
+```bash
 mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
+```
 
-# Run frontend
-cd frontend && npm install && npm run dev
+Run frontend:
 
+```bash
+npm ci --prefix frontend; npm run dev --prefix frontend
 ```
 
 Backend runs on port **8080**, frontend on **3000**.
@@ -54,7 +62,7 @@ Local set: `h2,stub-google,local` (`local` auto-includes `plain-log`). Productio
 ## Testing
 
 - **MVC integration tests**: use `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("h2")` with `oauth2Login()` mock.
-- Run tests: `mvn test` from root or from `backend/`.
+- Run tests from the repository root with `mvn test`.
 
 ## Adding Features
 

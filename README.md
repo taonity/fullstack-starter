@@ -2,146 +2,64 @@
 
 A template for building full-stack web applications with Google OAuth2 authentication.
 
-### Features
+## What is included
 
-- Google OAuth2 login
-- Session-based authentication with CSRF protection
-- Health check endpoints (liveness & readiness)
-- Frontend login page that works independently of backend availability
+- Kotlin and Spring Boot 4 backend with session authentication and CSRF protection
+- Next.js TypeScript frontend with backend calls proxied through Next.js API routes
+- Google OAuth2 production and WireMock-backed local login profiles
+- PostgreSQL, H2, Flyway, health endpoints, and Docker Compose deployment templates
 
-### Project structure
+## Prerequisites
 
-- Backend — Kotlin Spring Boot 4 application on Maven
-- Frontend — TypeScript Next.js with client and server parts
-- Deployment — Docker Compose template with backend, frontend, Postgres, and Flyway
+- Java 17
+- Maven
+- Node.js 24 and npm
+- Docker and Docker Compose (optional)
 
-### How to run
+## Profiles
 
-#### Backend
+Choose one profile from each resource group.
 
-The project has all its resources stubbed for the most comfortable local development. It has a list of profiles for any running requirements.
+| Resource | Local/stub | Production |
+|---|---|---|
+| Database | `h2` | `postgres` |
+| OAuth2 | `stub-google` | `prod-google` |
+| Logging | `plain-log` (included by `local`) | default |
+| General | `local` | none |
 
-| Profile      | Resource | Description                                                              |
-|--------------|----------|--------------------------------------------------------------------------|
-| stub-google  | Google   | WireMock stubs for Google OAuth2 (no real credentials needed)            |
-| prod-google  | Google   | Real Google OAuth2 (requires GOOGLE_CLIENT_ID/SECRET env vars)           |
-| h2           | Postgres | H2 in-memory database                                                    |
-| postgres     | Postgres | Regular Postgres configuration for a local or remote instance            |
-| local        | General  | Common local configurations for development (includes plain-log)         |
-| plain-log    | Logging  | Plain text logging (included by local)                                   |
+Local development uses `h2,stub-google,local`; production uses `postgres,prod-google`.
 
-Only one profile from a resource group can be used. For example, the set for the production environment looks like
-`postgres,prod-google`, and for local development — `h2,stub-google,local`.
+## Run locally
 
-Use IntelliJ to run the backend locally. Add a Run/Debug configuration with Main class `org.example.fullstackstarter.FullstackStarterApplicationKt`
-and VM options `-Dspring.profiles.active=h2,stub-google,local` and run the backend.
+Run each command from the repository root.
 
-To run it from PS use a command like this:
+Start the backend:
 
 ```bash
 mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
-
 ```
 
-#### Frontend
-
-I recommend opening /frontend directory in VS Code. Run `npm install`, and then `npm run dev`.
-
-### Docker Compose deployment
-
-Docker Compose runs the backend and frontend with Postgres and Flyway migrations.
-
-Compose creates its project network automatically; no external Docker networks are required.
-
-Run this
+Start the frontend in another terminal:
 
 ```bash
-# Prepares Docker Compose templates for running. Make sure you are on the last released tag in git.
-mvn clean -P build-automation-docker-compose-project compile -DskipTests=true
-# Runs Docker Compose template with images from Dockerhub. Make sure you placed all required env vars.
-docker compose -f backend/target/docker/test/docker-compose.yml up -d
-
+npm ci --prefix frontend; npm run dev --prefix frontend
 ```
 
-Or you can build the images yourself by following the instructions. Run this
+The backend runs on `http://127.0.0.1:8080`; the frontend runs on `http://127.0.0.1:3000`.
+
+For the complete local stack with published images:
 
 ```bash
-# Builds all modules 
-mvn clean -P build-docker-image,build-automation-docker-compose-project install -DskipTests=true
-# Installs npm modules for Next.js frontend
-npm install --prefix frontend/
-# Builds the latest image of the frontend app using Dockerfile
-docker build -t fullstack-starter-frontend frontend/
-# Runs Docker Compose template with images from Dockerhub. Make sure you placed all required env vars.
-docker compose -f templates/docker/docker-compose.yml up -d
-
+docker compose --env-file templates/docker/.env.test -f templates/docker/docker-compose.yml -f templates/docker/docker-compose.ports-local.yml up
 ```
 
-### Environment variables
+See [Deployment](docs/DEPLOYMENT.md) for production configuration and Compose requirements. See [Database](docs/DATABASE.md) for schema and migration management.
 
-The project requires a set of environment variables to be configured for some services, depending on which profile set you use.
+## Guides
 
-| Env var                              | Service  | Description                                                         |
-|--------------------------------------|----------|---------------------------------------------------------------------|
-| COMPOSE_PROJECT_NAME                 | Compose  | Name for the Docker Compose project                                 |
-| DOCKER_REGISTRY                      | Compose  | Registry containing backend and frontend images                     |
-| POSTGRES_USER                        | Postgres | Used by Flyway                                                      |
-| POSTGRES_PASSWORD                    | Postgres | Used by Flyway                                                      |
-| POSTGRES_DB                          | Postgres | DB name                                                             |
-| POSTGRES_APP_USER                    | Postgres | Used by backend                                                     |
-| POSTGRES_APP_PASSWORD                | Postgres | Used by backend                                                     |
-| POSTGRES_PORT                        | Postgres | Database port                                                       |
-| POSTGRES_ADDRESS                     | Postgres | Database host                                                       |
-| GOOGLE_CLIENT_ID                     | Backend  | Taken from Google Cloud Console                                     |
-| GOOGLE_CLIENT_SECRET                 | Backend  | Taken from Google Cloud Console                                     |
-| APP_DEFAULT_SUCCESS_URL              | Backend  | Redirect after a successful login                                   |
-| APP_LOGIN_URL                        | Backend  | Redirect after a failed login                                       |
-| SERVER_SERVLET_SESSION_COOKIE_DOMAIN | Backend  | Base domain for frontend and backend                                |
-| SERVER_SERVLET_SESSION_COOKIE_NAME   | Backend  | Session cookie name                                                 |
-| CSRF_COOKIE_NAME                     | Both     | CSRF cookie name; must match in backend and frontend                 |
-| SPRING_PROFILES_ACTIVE               | Backend  | Local: `h2,stub-google,local`; production: `postgres,prod-google`    |
-| PUBLIC_BACKEND_URL                   | Frontend | Public backend URL for OAuth initiation                             |
-| LOCAL_BACKEND_URL                    | Frontend | Internal backend URL used by frontend server-side requests          |
-
-### PostgreSQL database ERD diagram
-
-<!-- mermerd-start -->
-
-```mermaid
-erDiagram
-    app_user {
-        character_varying display_name "{NOT_NULL}"
-        character_varying email "{NOT_NULL}"
-        character_varying google_id PK "{NOT_NULL}"
-        character_varying picture_url 
-    }
-
-```
-
-<!-- mermerd-end -->
-
-### Prod deployment
-
-The service is deployed in a cheap VPS. [taonity/docker-webhook](https://github.com/taonity/docker-webhook) is used for
-deployment in a custom production environment — [taonity/prodenv](https://github.com/taonity/prodenv/tree/defr-prodenv).
-
-#### GitHub Environment setup
-
-The release workflow uses `environment: production` on the `approve-prod` job to gate production deployments.
-For this to require manual approval, you must configure protection rules on the environment:
-
-1. Go to **GitHub repo → Settings → Environments → "production"** (create it if it doesn't exist).
-2. Enable **"Required reviewers"** and add the appropriate users or teams.
-
-Without this configuration, the `approve-prod` job will pass automatically with no manual intervention.
-
-### Guides
-
-- [docs/ADD_FEATURE.md](docs/ADD_FEATURE.md) — How to add a new feature (package-per-feature)
-- [docs/ADD_EXTERNAL_API.md](docs/ADD_EXTERNAL_API.md) — How to integrate an external API
-- [docs/ADD_OAUTH2_PROVIDER.md](docs/ADD_OAUTH2_PROVIDER.md) — How to add/change OAuth2 providers
-- [docs/DATABASE.md](docs/DATABASE.md) — Database migrations and schema management
-- [docs/TESTING.md](docs/TESTING.md) — Testing patterns and conventions
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Docker deployment guide
-
-Never put valuse with # in env vars
+- [Add a feature](docs/ADD_FEATURE.md)
+- [Integrate an external API](docs/ADD_EXTERNAL_API.md)
+- [Add or change an OAuth2 provider](docs/ADD_OAUTH2_PROVIDER.md)
+- [Database and migrations](docs/DATABASE.md)
+- [Testing](docs/TESTING.md)
+- [Deployment](docs/DEPLOYMENT.md)

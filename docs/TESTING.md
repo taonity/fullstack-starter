@@ -1,102 +1,77 @@
 # Testing
 
-## Backend Tests
+## Commands
 
-### Running Tests
+Run each command from the repository root.
+
+All reactor tests:
 
 ```bash
-# All tests
 mvn test
+```
 
-# Backend only
+Backend only:
+
+```bash
 mvn -pl backend test
+```
 
-# Single test
+Single backend test:
+
+```bash
 mvn -pl backend test -Dtest=LazyFetchingArchitectureTest
 ```
 
-### Test Patterns
+Smoke tests require Docker and both application images. The command below matches the registry in `templates/docker/.env.test`:
 
-#### Integration Tests (Controllers)
+```bash
+docker build -t generaltao725/fullstack-starter-frontend:latest frontend; mvn -B -P build-docker-image,smoke-tests verify
+```
+
+Frontend tests once:
+
+```bash
+npm test --prefix frontend
+```
+
+Frontend tests in watch mode:
+
+```bash
+npm run test:watch --prefix frontend
+```
+
+## Backend expectations
+
+- Use `@SpringBootTest`, `@AutoConfigureMockMvc`, and the `h2` profile for MVC integration tests.
+- Cover anonymous rejection and authenticated behavior for protected controllers.
+- Use the OAuth2 stub flow when persistence or session behavior matters; [`ControllerTestsBaseClass`](../backend/src/test/kotlin/org/example/fullstackstarter/other/ControllerTestsBaseClass.kt) provides that pattern.
+- Add repository tests for custom queries, constraints, mappings, and transaction-sensitive behavior rather than framework-provided CRUD.
+- Keep architecture rules focused; [`LazyFetchingArchitectureTest`](../backend/src/test/kotlin/org/example/fullstackstarter/other/LazyFetchingArchitectureTest.kt) is the current example.
+- [`SmokeIT`](../backend/src/test/kotlin/org/example/fullstackstarter/automation/SmokeIT.kt) owns the opt-in Compose readiness check.
+
+Complete authenticated-controller pattern:
 
 ```kotlin
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("h2")
-class YourControllerTest {
+package org.example.fullstackstarter.example
 
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+import org.example.fullstackstarter.other.ControllerTestsBaseClass
+import org.junit.jupiter.api.Test
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-    @Test
-    fun `endpoint requires authentication`() {
-        mockMvc.perform(get("/your-endpoint"))
-            .andExpect(status().isUnauthorized)
-    }
-
+class ExampleControllerTest : ControllerTestsBaseClass() {
     @Test
     fun `authenticated user can access endpoint`() {
-        mockMvc.perform(
-            get("/your-endpoint").with(
-                oauth2Login().attributes { attrs ->
-                    attrs["sub"] = "google-123"
-                    attrs["name"] = "Test User"
-                    attrs["email"] = "test@example.com"
-                }
-            )
-        )
+        val sessionCookie = authorizeOAuth2()
+
+        mockMvc.perform(get("/example").cookie(sessionCookie))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.field").value("expected"))
     }
 }
 ```
 
-#### Repository Tests
+## Frontend expectations
 
-```kotlin
-@DataJpaTest
-@ActiveProfiles("h2")
-class YourRepositoryTest {
-
-    @Autowired
-    private lateinit var repository: YourRepository
-
-    @Test
-    fun `save and find by id`() {
-        val entity = YourEntity(name = "test")
-        repository.save(entity)
-        val found = repository.findById(entity.id!!)
-        assertThat(found).isPresent
-    }
-}
-```
-
-### Test Profiles
-
-- `h2` — Uses in-memory H2 database with Flyway migrations
-- Tests use `oauth2Login()` from `spring-security-test` to mock OAuth2 authentication
-
-## Frontend Tests
-
-### Running Tests
-
-```bash
-cd frontend
-npm test           # Single run
-npm run test:watch # Watch mode
-```
-
-### Test Patterns
-
-Tests use Vitest. Place test files next to source files or in `__tests__/` directories:
-
-```typescript
-// src/lib/backend.test.ts
-import { describe, it, expect } from 'vitest'
-
-describe('fetchFromBackend', () => {
-  it('passes cookies from request', () => {
-    // ...
-  })
-})
-```
+Use Vitest for environment parsing, authentication helpers, proxy behavior, and failure cases. Keep tests beside their source when practical. Current focused patterns are [`auth.test.ts`](../frontend/src/lib/auth.test.ts), [`env.test.ts`](../frontend/src/lib/env.test.ts), and [`runtimeConfig.test.ts`](../frontend/src/lib/runtimeConfig.test.ts).

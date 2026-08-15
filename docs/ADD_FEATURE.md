@@ -1,135 +1,35 @@
 # Adding a New Feature
 
-This guide shows how to add a new feature to the backend following the package-per-feature convention.
+Use this checklist to add one vertical feature without bypassing existing boundaries.
 
-## Step 1: Create the Package Structure
+## Checklist
 
-Under `backend/src/main/kotlin/org/example/fullstackstarter/`, create a new package:
+1. Choose a package under [`backend/src/main/kotlin/org/example/fullstackstarter`](../backend/src/main/kotlin/org/example/fullstackstarter).
+   Keep feature code together; use the [`console` feature](../backend/src/main/kotlin/org/example/fullstackstarter/console/) as the representative layout.
+2. Add only the layers the feature needs: controller, service, DTO, entity, repository, exception, or configuration.
+   Do not create empty layers.
+3. Keep HTTP payloads at a DTO boundary.
+   Do not expose JPA entities from controllers.
+4. Put orchestration and transaction boundaries in the service layer.
+   Keep controllers focused on transport and authorization.
+5. Authenticate controller endpoints with the established principal pattern.
+   Validate request DTOs and return deliberate status codes.
+6. If the schema changes, inspect [`templates/docker/flyway/sql/tables`](../templates/docker/flyway/sql/tables/) and use the next unused Flyway version.
+   Update [Database](DATABASE.md) when the schema workflow changes.
+7. Add a Next.js API route so browser code never calls the backend directly.
+   Use the focused [`user` proxy](../frontend/src/app/api/user/route.ts) or the [`console` catch-all proxy](../frontend/src/app/api/console/%5B...path%5D/route.ts) as the closest pattern.
+8. For POST, PUT, PATCH, and DELETE routes, forward the `X-XSRF-TOKEN` header with the authenticated session.
+   Preserve backend response status, headers, and body.
+9. Build the UI inside the relevant feature directory.
+   [`frontend/src/features/console`](../frontend/src/features/console/) shows the current feature organization.
+10. Add focused backend tests for authorization, validation, service behavior, persistence, and error mapping as applicable.
+    Add frontend tests for proxy and UI behavior.
+11. Follow [Testing](TESTING.md) for current commands and test patterns.
 
-```ini
-yourfeature/
-├── controller/
-│   └── YourFeatureController.kt
-├── service/
-│   └── YourFeatureService.kt
-├── dto/
-│   └── YourFeatureDto.kt
-├── entity/
-│   └── YourFeatureEntity.kt
-├── repository/
-│   └── YourFeatureRepository.kt
-└── exception/
-    └── YourFeatureNotFoundException.kt
+## Verify
 
-```
+Run only the checks relevant to the changed slice, then run the full module checks from the repository root before merging.
 
-## Step 2: Entity & Repository
-
-```kotlin
-@Entity
-@Table(name = "your_feature")
-class YourFeatureEntity(
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    val id: String? = null,
-    var name: String,
-    var description: String
-)
-
-```
-
-```kotlin
-@Repository
-interface YourFeatureRepository : JpaRepository<YourFeatureEntity, String>
-
-```
-
-## Step 3: Service
-
-```kotlin
-@Service
-class YourFeatureService(
-    private val repository: YourFeatureRepository
-) {
-    fun getAll(): List<YourFeatureEntity> = repository.findAll()
-    fun getById(id: String): YourFeatureEntity = repository.findById(id)
-        .orElseThrow { YourFeatureNotFoundException(id) }
-}
-
-```
-
-## Step 4: Controller
-
-```kotlin
-@RestController
-@RequestMapping("/your-feature")
-class YourFeatureController(
-    private val service: YourFeatureService
-) {
-    @GetMapping
-    fun list(@AuthenticationPrincipal principal: GoogleUserPrincipal): List<YourFeatureDto> {
-        return service.getAll().map { YourFeatureDto.from(it) }
-    }
-}
-
-```
-
-## Step 5: Database Migration
-
-Add a Flyway migration in `templates/docker/flyway/sql/tables/`. Check the existing files first and use the next unused version; duplicate versions make Flyway validation fail.
-
-```sql
--- V100004__create_your_feature_table.sql
-CREATE TABLE your_feature (
-    id          VARCHAR PRIMARY KEY,
-    name        VARCHAR NOT NULL,
-    description VARCHAR
-);
-
-```
-
-## Step 6: Frontend API Route
-
-Add `frontend/src/app/api/your-feature/route.ts`:
-
-```typescript
-import { type NextRequest } from 'next/server'
-import { fetchFromBackend } from '@/lib/backend'
-
-export async function GET(req: NextRequest) {
-  const response = await fetchFromBackend(req, '/your-feature')
-  const data = await response.json()
-  return Response.json(data, { status: response.status })
-}
-
-```
-
-## Step 7: Test
-
-```kotlin
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("h2")
-class YourFeatureControllerTest {
-    @Autowired private lateinit var mockMvc: MockMvc
-
-    @Test
-    fun `list requires auth`() {
-        mockMvc.perform(get("/your-feature"))
-            .andExpect(status().isUnauthorized)
-    }
-}
-
-```
-
-## Step 8: Exception Handling (Optional)
-
-If you need custom error responses, add a handler in `GlobalExceptionHandler`:
-
-```kotlin
-@ExceptionHandler(YourFeatureNotFoundException::class)
-fun handleNotFound(e: YourFeatureNotFoundException): ResponseEntity<Map<String, String>> {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(mapOf("error" to "NOT_FOUND", "message" to (e.message ?: "")))
-}
-
+```bash
+mvn -pl backend test; npm test --prefix frontend; npm run lint --prefix frontend
 ```

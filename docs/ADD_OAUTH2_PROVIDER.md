@@ -1,12 +1,21 @@
-# Adding / Changing OAuth2 Providers
+# Adding or Changing OAuth2 Providers
 
-This template uses Google OAuth2. Here's how to add other providers or switch entirely.
+Provider work is cross-cutting. Treat registration, identity, persistence, local stubs, UI, and tests as one change.
 
-## Adding a New Provider (e.g., GitHub)
+## Impact checklist
 
-### 1. Spring Security Configuration
+1. Add matching production and stub profiles. Mirror [`application-prod-google.yaml`](../backend/src/main/resources/application-prod-google.yaml) and [`application-stub-google.yaml`](../backend/src/main/resources/application-stub-google.yaml); keep client credentials and provider endpoints configurable.
+2. Define the provider attribute mapping for subject, email, display name, and picture. Decide how missing or unverified email is handled. [`GoogleUserPrincipal`](../backend/src/main/kotlin/org/example/fullstackstarter/security/principal/GoogleUserPrincipal.kt) shows the current Google mapping.
+3. Update both persistence paths where the provider supports them: [`OAuth2UserPersistenceService`](../backend/src/main/kotlin/org/example/fullstackstarter/security/service/OAuth2UserPersistenceService.kt) and [`OidcUserPersistenceService`](../backend/src/main/kotlin/org/example/fullstackstarter/security/service/OidcUserPersistenceService.kt).
+4. Make identity provider-agnostic before storing multiple providers. Review [`UserEntity`](../backend/src/main/kotlin/org/example/fullstackstarter/user/entity/UserEntity.kt), uniqueness rules, account-linking behavior, and whether a Flyway migration is required. Follow [Database](DATABASE.md).
+5. Add the provider login URL and button to the [login page](../frontend/src/app/%28public%29/login/page.tsx). Keep OAuth initiation on the backend at `/oauth2/authorization/{registrationId}`.
+6. Add or replace a stub module and provider resources. Use the existing [Google WireMock resources](../google-stubs/src/main/resources/wiremock/google/) as the local profile pattern.
+7. Test attribute mapping, OAuth2 and OIDC persistence, repeated login, identity collisions, authorization redirects, callback behavior, and the frontend login action. Follow [Testing](TESTING.md).
+8. Update the profile matrix and deployment environment documentation when profile names or required values change.
 
-Add the registration in profile-specific files, mirroring `application-prod-google.yaml` and `application-stub-google.yaml`:
+## Registration shape
+
+Keep production and stub values in separate profile files.
 
 ```yaml
 spring:
@@ -14,102 +23,13 @@ spring:
     oauth2:
       client:
         registration:
-          github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope: read:user,user:email
+          provider-id:
+            client-id: ${PROVIDER_CLIENT_ID}
+            client-secret: ${PROVIDER_CLIENT_SECRET}
+            scope: openid,email,profile
         provider:
-          github:
-            authorization-uri: https://github.com/login/oauth/authorize
-            token-uri: https://github.com/login/oauth/access_token
-            user-info-uri: https://api.github.com/user
-
+          provider-id:
+            issuer-uri: ${PROVIDER_ISSUER_URI}
 ```
 
-### 2. Update Security Config
-
-No authorization matcher change is required for the standard `/oauth2/authorization/{registrationId}` and `/login/oauth2/code/{registrationId}` endpoints; Spring Security's OAuth2 filters handle them.
-
-### 3. Update the UserPrincipal
-
-You have two approaches:
-
-**A) Unified principal** — Modify `GoogleUserPrincipal` to become a generic `AppUserPrincipal` that handles different attribute schemas.
-
-**B) Provider-specific principals** — Create a `GitHubUserPrincipal` and update `OAuth2UserPersistenceService` to detect the provider and create the right principal.
-
-### 4. Update OAuth2UserPersistenceService
-
-```kotlin
-override fun loadUser(userRequest: OAuth2UserRequest?): OAuth2User {
-    val validatedUserRequest = requireNotNull(userRequest)
-    val oAuth2User = super.loadUser(validatedUserRequest)
-
-    return when (validatedUserRequest.clientRegistration.registrationId) {
-        "google-fullstack-starter" -> GoogleUserPrincipal.of(oAuth2User)
-        "github" -> GitHubUserPrincipal.of(oAuth2User)
-        else -> throw IllegalArgumentException("Unknown OAuth2 provider")
-    }
-}
-
-```
-
-### 5. Update User Entity
-
-You may want to make the user entity provider-agnostic:
-
-```kotlin
-@Entity
-@Table(name = "app_user")
-class UserEntity(
-    @Id val id: String,          // provider-specific ID
-    var provider: String,        // "google", "github"
-    var email: String,
-    var displayName: String,
-    var pictureUrl: String? = null
-)
-
-```
-
-### 6. Frontend Login Buttons
-
-Update `frontend/src/app/(public)/login/page.tsx` to show login buttons for each provider:
-
-```tsx
-<a href={`${config.publicBackendUrl}/oauth2/authorization/google-fullstack-starter`}>Sign in with Google</a>
-<a href={`${config.publicBackendUrl}/oauth2/authorization/github`}>Sign in with GitHub</a>
-
-```
-
-## Replacing Google with a Different Provider Entirely
-
-1. Remove the Google registration from `application-prod-google.yaml` and `application-stub-google.yaml`.
-2. Add production and stub profiles for the new provider.
-3. Create a new `XxxUserPrincipal` class.
-4. Update `OAuth2UserPersistenceService` and `OidcUserPersistenceService` for the new attribute schema.
-5. Rename `google-stubs/` to match (for example, `github-stubs/`) and update its WireMock resources.
-6. Update profile names and the frontend login URL.
-
-## WireMock Stubs for Local Dev
-
-For each provider, place WireMock resources in a dedicated stub module, following `google-stubs/src/main/resources/wiremock/google/`.
-
-```json
-{
-  "request": {
-    "method": "GET",
-    "urlPath": "/user"
-  },
-  "response": {
-    "status": 200,
-    "headers": { "Content-Type": "application/json" },
-    "jsonBody": {
-      "id": 12345,
-      "login": "testuser",
-      "email": "test@example.com",
-      "name": "Test User"
-    }
-  }
-}
-
-```
+Standard authorization and callback endpoints are handled by Spring Security; add custom routing only when the provider requires it.
