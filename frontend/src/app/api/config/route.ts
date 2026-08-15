@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
+import { getServerEnv } from '@/lib/env'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET() {
+  const env = getServerEnv()
   return NextResponse.json({
-    csrfCookieName: process.env.CSRF_COOKIE_NAME || '',
-    publicBackendUrl: process.env.PUBLIC_BACKEND_URL || '',
+    csrfCookieName: env.csrfCookieName,
+    publicBackendUrl: env.publicBackendUrl,
   })
 }

@@ -41,8 +41,7 @@ export default function Home() {
   const handleLogout = async () => {
     try {
       const config = await getRuntimeConfig()
-      const csrfCookieName = config.csrfCookieName || 'XSRF-TOKEN'
-      const xsrfToken = getCookie(csrfCookieName) || ''
+      const xsrfToken = getCookie(config.csrfCookieName) || ''
 
       await requestLogout(xsrfToken)
       window.location.href = '/login'

@@ -15,8 +15,7 @@ const BASE = '/api/console'
 
 async function csrfToken(): Promise<string> {
   const config = await getRuntimeConfig()
-  const cookieName = config.csrfCookieName || 'XSRF-TOKEN'
-  return getCookie(cookieName) || ''
+  return getCookie(config.csrfCookieName) || ''
 }
 
 class ApiError extends Error {

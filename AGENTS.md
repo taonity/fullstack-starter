@@ -4,8 +4,8 @@
 
 Multi-module Maven monorepo (Spring Boot 4 / Kotlin backend + Next.js TypeScript frontend).
 
-- **`backend/`** — Main backend. Kotlin, Spring Boot 4, JPA/Hibernate, Spring Security OAuth2 (Google login). Package-per-feature layout under `org.example.fullstackstarter`: `hello/`, `user/`, `security/`, `observability/`, `web/`, `local/`.
-- **`google-contracts/`** — WireMock stubs for Google OAuth2 (JSON mappings in `src/main/resources/mappings/`). Used by `stub-google` profile for local development without real Google credentials.
+- **`backend/`** — Main backend. Kotlin, Spring Boot 4, JPA/Hibernate, Spring Security OAuth2 (Google login). Package-per-feature layout under `org.example.fullstackstarter`: `common/`, `config/`, `console/`, `security/`, `user/`, and supporting infrastructure packages.
+- **`google-stubs/`** — WireMock stubs for Google OAuth2 (resources under `src/main/resources/wiremock/google/`). Used by the `stub-google` profile for local development without real Google credentials.
 - **`frontend/`** — Next.js app (`src/app/` App Router). All backend calls go through Next.js API routes (`src/app/api/`) which proxy to the backend via `src/lib/backend.ts` using `fetchFromBackend()`.
 - **`templates/docker/`** — Docker Compose templates with Flyway migrations in `flyway/sql/tables/`.
 
@@ -26,6 +26,7 @@ mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profil
 
 # Run frontend
 cd frontend && npm install && npm run dev
+
 ```
 
 Backend runs on port **8080**, frontend on **3000**.
@@ -48,7 +49,7 @@ Local set: `h2,stub-google,local` (`local` auto-includes `plain-log`). Productio
 - **Controller pattern**: `@RestController`, inject services, use `@AuthenticationPrincipal principal: GoogleUserPrincipal` for auth. `ControllerLoggingInterceptor` automatically logs every controller method invocation.
 - **CSRF**: SPA pattern with `CookieCsrfTokenRepository` + `SpaCsrfTokenRequestHandler`. Frontend reads CSRF cookie and sends `X-XSRF-TOKEN` header on mutating requests.
 - **Frontend API proxy**: every backend call is proxied through Next.js API routes in `src/app/api/`. Never call the backend directly from client components.
-- **DB migrations**: Flyway SQL scripts in `templates/docker/flyway/sql/tables/` (naming: `V100000__description.sql`). H2 profile uses Flyway with `filesystem:` locations.
+- __DB migrations__: Flyway SQL scripts in `templates/docker/flyway/sql/tables/` (naming: `V100000__description.sql`). H2 profile uses Flyway with `filesystem:` locations.
 
 ## Testing
 

@@ -28,7 +28,7 @@ export function DevLoginSwitcher() {
         const data = (await res.json()) as StubLogin[]
         const config = await getRuntimeConfig()
         if (!active) return
-        setBackendUrl(config.publicBackendUrl || '')
+        setBackendUrl(config.publicBackendUrl)
         setLogins(data)
       } catch {
         // Endpoint absent → not in stub mode; keep the switcher hidden.

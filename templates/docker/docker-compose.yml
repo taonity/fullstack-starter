@@ -22,12 +22,6 @@ services:
       service: backend
     networks:
       backend:
-      prodenv-shared-internal:
-        aliases:
-          - ${COMPOSE_PROJECT_NAME}-backend
-      artist-insight-shared:
-        aliases:
-          - ${COMPOSE_PROJECT_NAME}-backend
     depends_on:
       flyway:
         condition: service_completed_successfully
@@ -37,9 +31,7 @@ services:
       file: frontend/docker-compose.yml
       service: frontend
     networks:
-      prodenv-shared-internal:
-        aliases:
-          - ${COMPOSE_PROJECT_NAME}-frontend
+      backend:
     depends_on:
       backend:
         condition: service_healthy
@@ -50,8 +42,3 @@ volumes:
 
 networks:
   backend:
-  # TODO: rename that network
-  prodenv-shared-internal:
-    external: true
-  artist-insight-shared:
-    external: true

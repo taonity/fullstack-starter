@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.LOCAL_BACKEND_URL || ''
+import { getServerEnv } from '@/lib/env'
 
 export async function GET() {
+  const { localBackendUrl } = getServerEnv()
   const checks: Record<string, { status: string }> = {}
 
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(`${BACKEND_URL}/actuator/health/liveness`, {
+    const res = await fetch(`${localBackendUrl}/actuator/health/liveness`, {
       signal: controller.signal,
     })
     clearTimeout(timeoutId)

@@ -72,12 +72,13 @@ export default function LoginPage() {
       return
     }
 
-    const config = await getRuntimeConfig()
-    const loginUrl = config.publicBackendUrl
-      ? `${config.publicBackendUrl}/oauth2/authorization/google-fullstack-starter`
-      : '/oauth2/authorization/google-fullstack-starter'
-
-    window.location.href = loginUrl
+    try {
+      const config = await getRuntimeConfig()
+      window.location.href = `${config.publicBackendUrl}/oauth2/authorization/google-fullstack-starter`
+    } catch {
+      setError('Application configuration is unavailable. Please try again later.')
+      setIsChecking(false)
+    }
   }
 
   return (

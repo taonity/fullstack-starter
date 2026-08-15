@@ -1,0 +1,16 @@
+services:
+  backend:
+    networks:
+      prodenv-shared-internal:
+        aliases:
+          - ${COMPOSE_PROJECT_NAME}-backend
+
+  frontend:
+    networks:
+      prodenv-shared-internal:
+        aliases:
+          - ${COMPOSE_PROJECT_NAME}-frontend
+
+networks:
+  prodenv-shared-internal:
+    external: true

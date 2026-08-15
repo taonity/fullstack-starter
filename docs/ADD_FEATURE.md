@@ -6,7 +6,7 @@ This guide shows how to add a new feature to the backend following the package-p
 
 Under `backend/src/main/kotlin/org/example/fullstackstarter/`, create a new package:
 
-```
+```ini
 yourfeature/
 ├── controller/
 │   └── YourFeatureController.kt
@@ -20,6 +20,7 @@ yourfeature/
 │   └── YourFeatureRepository.kt
 └── exception/
     └── YourFeatureNotFoundException.kt
+
 ```
 
 ## Step 2: Entity & Repository
@@ -33,11 +34,13 @@ class YourFeatureEntity(
     var name: String,
     var description: String
 )
+
 ```
 
 ```kotlin
 @Repository
 interface YourFeatureRepository : JpaRepository<YourFeatureEntity, String>
+
 ```
 
 ## Step 3: Service
@@ -51,6 +54,7 @@ class YourFeatureService(
     fun getById(id: String): YourFeatureEntity = repository.findById(id)
         .orElseThrow { YourFeatureNotFoundException(id) }
 }
+
 ```
 
 ## Step 4: Controller
@@ -66,19 +70,21 @@ class YourFeatureController(
         return service.getAll().map { YourFeatureDto.from(it) }
     }
 }
+
 ```
 
 ## Step 5: Database Migration
 
-Add a Flyway migration in `templates/docker/flyway/sql/tables/`:
+Add a Flyway migration in `templates/docker/flyway/sql/tables/`. Check the existing files first and use the next unused version; duplicate versions make Flyway validation fail.
 
 ```sql
--- V100001__create_your_feature_table.sql
+-- V100004__create_your_feature_table.sql
 CREATE TABLE your_feature (
     id          VARCHAR PRIMARY KEY,
     name        VARCHAR NOT NULL,
     description VARCHAR
 );
+
 ```
 
 ## Step 6: Frontend API Route
@@ -94,6 +100,7 @@ export async function GET(req: NextRequest) {
   const data = await response.json()
   return Response.json(data, { status: response.status })
 }
+
 ```
 
 ## Step 7: Test
@@ -111,6 +118,7 @@ class YourFeatureControllerTest {
             .andExpect(status().isUnauthorized)
     }
 }
+
 ```
 
 ## Step 8: Exception Handling (Optional)
@@ -123,4 +131,5 @@ fun handleNotFound(e: YourFeatureNotFoundException): ResponseEntity<Map<String, 
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(mapOf("error" to "NOT_FOUND", "message" to (e.message ?: "")))
 }
+
 ```

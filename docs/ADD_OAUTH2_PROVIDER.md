@@ -6,7 +6,7 @@ This template uses Google OAuth2. Here's how to add other providers or switch en
 
 ### 1. Spring Security Configuration
 
-In `application.yaml`, add under `spring.security.oauth2.client`:
+Add the registration in profile-specific files, mirroring `application-prod-google.yaml` and `application-stub-google.yaml`:
 
 ```yaml
 spring:
@@ -23,11 +23,12 @@ spring:
             authorization-uri: https://github.com/login/oauth/authorize
             token-uri: https://github.com/login/oauth/access_token
             user-info-uri: https://api.github.com/user
+
 ```
 
 ### 2. Update Security Config
 
-In `SecurityConfig.kt`, the security filter chain already supports multiple providers. Just ensure the `permitAll()` patterns include the new callback URL.
+No authorization matcher change is required for the standard `/oauth2/authorization/{registrationId}` and `/login/oauth2/code/{registrationId}` endpoints; Spring Security's OAuth2 filters handle them.
 
 ### 3. Update the UserPrincipal
 
@@ -44,13 +45,13 @@ override fun loadUser(userRequest: OAuth2UserRequest?): OAuth2User {
     val validatedUserRequest = requireNotNull(userRequest)
     val oAuth2User = super.loadUser(validatedUserRequest)
 
-    val registrationId = validatedUserRequest.clientRegistration.registrationId
-    return when (registrationId) {
-        "google" -> GoogleUserPrincipal.of(oAuth2User)
+    return when (validatedUserRequest.clientRegistration.registrationId) {
+        "google-fullstack-starter" -> GoogleUserPrincipal.of(oAuth2User)
         "github" -> GitHubUserPrincipal.of(oAuth2User)
-        else -> throw IllegalArgumentException("Unknown provider: $registrationId")
+        else -> throw IllegalArgumentException("Unknown OAuth2 provider")
     }
 }
+
 ```
 
 ### 5. Update User Entity
@@ -67,29 +68,31 @@ class UserEntity(
     var displayName: String,
     var pictureUrl: String? = null
 )
+
 ```
 
 ### 6. Frontend Login Buttons
 
-Update `frontend/src/app/(app)/page.tsx` to show login buttons for each provider:
+Update `frontend/src/app/(public)/login/page.tsx` to show login buttons for each provider:
 
 ```tsx
 <a href={`${config.publicBackendUrl}/oauth2/authorization/google-fullstack-starter`}>Sign in with Google</a>
 <a href={`${config.publicBackendUrl}/oauth2/authorization/github`}>Sign in with GitHub</a>
+
 ```
 
 ## Replacing Google with a Different Provider Entirely
 
-1. Remove `google` registration from `application.yaml`
-2. Add new provider registration
-3. Create a new `XxxUserPrincipal` class
-4. Update `OAuth2UserPersistenceService` to handle the new attributes
-5. Rename `google-contracts/` to match (e.g., `github-contracts/`) and update WireMock stubs
-6. Update the `stub-google` profile to `stub-yourprovider`
+1. Remove the Google registration from `application-prod-google.yaml` and `application-stub-google.yaml`.
+2. Add production and stub profiles for the new provider.
+3. Create a new `XxxUserPrincipal` class.
+4. Update `OAuth2UserPersistenceService` and `OidcUserPersistenceService` for the new attribute schema.
+5. Rename `google-stubs/` to match (for example, `github-stubs/`) and update its WireMock resources.
+6. Update profile names and the frontend login URL.
 
 ## WireMock Stubs for Local Dev
 
-For each provider, create stubs in a contracts module:
+For each provider, place WireMock resources in a dedicated stub module, following `google-stubs/src/main/resources/wiremock/google/`.
 
 ```json
 {
@@ -108,4 +111,5 @@ For each provider, create stubs in a contracts module:
     }
   }
 }
+
 ```

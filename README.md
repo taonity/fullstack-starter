@@ -3,18 +3,22 @@
 A template for building full-stack web applications with Google OAuth2 authentication.
 
 ### Features
+
 - Google OAuth2 login
 - Session-based authentication with CSRF protection
 - Health check endpoints (liveness & readiness)
 - Frontend login page that works independently of backend availability
 
 ### Project structure
+
 - Backend — Kotlin Spring Boot 4 application on Maven
 - Frontend — TypeScript Next.js with client and server parts
 - Deployment — Docker Compose template with backend, frontend, Postgres, and Flyway
 
 ### How to run
+
 #### Backend
+
 The project has all its resources stubbed for the most comfortable local development. It has a list of profiles for any running requirements.
 
 | Profile      | Resource | Description                                                              |
@@ -29,34 +33,38 @@ The project has all its resources stubbed for the most comfortable local develop
 Only one profile from a resource group can be used. For example, the set for the production environment looks like
 `postgres,prod-google`, and for local development — `h2,stub-google,local`.
 
-Use IntelliJ to run the backend locally. Add a Run/Debug configuration with Main class `org.example.fullstackstarter.MainKt`
+Use IntelliJ to run the backend locally. Add a Run/Debug configuration with Main class `org.example.fullstackstarter.FullstackStarterApplicationKt`
 and VM options `-Dspring.profiles.active=h2,stub-google,local` and run the backend.
 
 To run it from PS use a command like this:
+
 ```bash
 mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
+
 ```
-h
+
 #### Frontend
+
 I recommend opening /frontend directory in VS Code. Run `npm install`, and then `npm run dev`.
 
 ### Docker Compose deployment
+
 Docker Compose runs the backend and frontend with Postgres and Flyway migrations.
 
-Run this. These are some shared networks required for production deployment.
-```bash
-docker network create prodenv-shared-internal
-docker network create fullstack-starter-shared
-```
+Compose creates its project network automatically; no external Docker networks are required.
+
 Run this
+
 ```bash
 # Prepares Docker Compose templates for running. Make sure you are on the last released tag in git.
 mvn clean -P build-automation-docker-compose-project compile -DskipTests=true
 # Runs Docker Compose template with images from Dockerhub. Make sure you placed all required env vars.
 docker compose -f backend/target/docker/test/docker-compose.yml up -d
+
 ```
 
 Or you can build the images yourself by following the instructions. Run this
+
 ```bash
 # Builds all modules 
 mvn clean -P build-docker-image,build-automation-docker-compose-project install -DskipTests=true
@@ -66,35 +74,39 @@ npm install --prefix frontend/
 docker build -t fullstack-starter-frontend frontend/
 # Runs Docker Compose template with images from Dockerhub. Make sure you placed all required env vars.
 docker compose -f templates/docker/docker-compose.yml up -d
+
 ```
 
 ### Environment variables
+
 The project requires a set of environment variables to be configured for some services, depending on which profile set you use.
 
 | Env var                              | Service  | Description                                                         |
 |--------------------------------------|----------|---------------------------------------------------------------------|
-| COMPOSE_PROJECT_NAME                 | Postgres | Name for Docker Compose project                                     |
+| COMPOSE_PROJECT_NAME                 | Compose  | Name for the Docker Compose project                                 |
+| DOCKER_REGISTRY                      | Compose  | Registry containing backend and frontend images                     |
 | POSTGRES_USER                        | Postgres | Used by Flyway                                                      |
 | POSTGRES_PASSWORD                    | Postgres | Used by Flyway                                                      |
 | POSTGRES_DB                          | Postgres | DB name                                                             |
 | POSTGRES_APP_USER                    | Postgres | Used by backend                                                     |
 | POSTGRES_APP_PASSWORD                | Postgres | Used by backend                                                     |
-| POSTGRES_PORT                        | Postgres |                                                                     |
-| POSTGRES_ADDRESS                     | Postgres |                                                                     |
+| POSTGRES_PORT                        | Postgres | Database port                                                       |
+| POSTGRES_ADDRESS                     | Postgres | Database host                                                       |
 | GOOGLE_CLIENT_ID                     | Backend  | Taken from Google Cloud Console                                     |
 | GOOGLE_CLIENT_SECRET                 | Backend  | Taken from Google Cloud Console                                     |
-| DEFAULT_SUCCESS_URL                  | Backend  | Redirect for a user after a successful login                        |
-| LOGIN_URL                            | Backend  | Redirect for a user after a failed login                            |
+| APP_DEFAULT_SUCCESS_URL              | Backend  | Redirect after a successful login                                   |
+| APP_LOGIN_URL                        | Backend  | Redirect after a failed login                                       |
 | SERVER_SERVLET_SESSION_COOKIE_DOMAIN | Backend  | Base domain for frontend and backend                                |
-| SERVER_SERVLET_SESSION_COOKIE_NAME   | Backend  | Cookie name for frontend and backend, for ex. JSESSIONID-STAGE      |
-| CSRF_COOKIE_NAME                     | Backend  | CSRF cookie name for frontend and backend, for ex. XSRF-TOKEN-STAGE |
-| SPRING_PROFILES_ACTIVE               | Backend  | See the table in [backend](#backend)                                |
-| PUBLIC_BACKEND_URL                   | Frontend | Redirect to backend for OAuth initiation                            |
+| SERVER_SERVLET_SESSION_COOKIE_NAME   | Backend  | Session cookie name                                                 |
+| CSRF_COOKIE_NAME                     | Both     | CSRF cookie name; must match in backend and frontend                 |
+| SPRING_PROFILES_ACTIVE               | Backend  | Local: `h2,stub-google,local`; production: `postgres,prod-google`    |
+| PUBLIC_BACKEND_URL                   | Frontend | Public backend URL for OAuth initiation                             |
 | LOCAL_BACKEND_URL                    | Frontend | Internal backend URL used by frontend server-side requests          |
 
 ### PostgreSQL database ERD diagram
 
 <!-- mermerd-start -->
+
 ```mermaid
 erDiagram
     app_user {
@@ -105,13 +117,16 @@ erDiagram
     }
 
 ```
+
 <!-- mermerd-end -->
 
 ### Prod deployment
+
 The service is deployed in a cheap VPS. [taonity/docker-webhook](https://github.com/taonity/docker-webhook) is used for
 deployment in a custom production environment — [taonity/prodenv](https://github.com/taonity/prodenv/tree/defr-prodenv).
 
 #### GitHub Environment setup
+
 The release workflow uses `environment: production` on the `approve-prod` job to gate production deployments.
 For this to require manual approval, you must configure protection rules on the environment:
 

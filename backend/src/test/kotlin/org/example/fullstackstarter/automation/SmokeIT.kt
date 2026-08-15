@@ -36,7 +36,7 @@ class SmokeIT {
     fun `all docker compose services are ready`() {
         composeProject.assertServiceHealthy("db")
         composeProject.assertServiceCompletedSuccessfully("flyway")
-        composeProject.assertServiceHealthy("app")
+        composeProject.assertServiceHealthy("backend")
         composeProject.assertServiceHealthy("frontend")
     }
 
@@ -61,12 +61,10 @@ private class DockerComposeProject(
 
     private val isWindows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
     private val objectMapper = jacksonObjectMapper()
-    private val sharedNetworks = listOf("fullstack-starter-shared")
     private var logFollower: Process? = null
     private var logFollowerThread: Thread? = null
 
     fun start() {
-        ensureSharedNetworks()
         compose("down", "-v", "--remove-orphans", allowFailure = true)
         compose("up", "-d", "--wait", "--wait-timeout", startupTimeout.seconds.toString())
         startLogStreaming()
@@ -95,15 +93,6 @@ private class DockerComposeProject(
         assertThat(state.exitCode)
             .describedAs("Expected %s container to exit successfully", serviceName)
             .isEqualTo(0)
-    }
-
-    private fun ensureSharedNetworks() {
-        sharedNetworks.forEach { networkName ->
-            val inspectResult = docker("network", "inspect", networkName, allowFailure = true)
-            if (inspectResult.exitCode != 0) {
-                docker("network", "create", networkName)
-            }
-        }
     }
 
     private fun inspectService(serviceName: String): ContainerState {
