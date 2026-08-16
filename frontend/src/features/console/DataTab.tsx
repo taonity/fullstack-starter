@@ -60,6 +60,7 @@ type DataTabProps<T> = {
   emptyLabel: string
   /** Label for the column the rows are ordered by (shown on the sort toggle). Defaults to "time". */
   sortLabel?: string
+  forceLoading?: boolean
   onError: (message: string) => void
 }
 
@@ -89,6 +90,7 @@ export function DataTab<T>({
   onDelete,
   emptyLabel,
   sortLabel = 'time',
+  forceLoading = false,
   onError,
 }: DataTabProps<T>) {
   const [page, setPage] = useState(0)
@@ -140,10 +142,11 @@ export function DataTab<T>({
   // re-render), and without the guard that would re-trigger a skeleton load on each parent render.
   const didInitialLoad = useRef(false)
   useEffect(() => {
+    if (forceLoading) return
     if (didInitialLoad.current) return
     didInitialLoad.current = true
     void reload(0, DEFAULT_PAGE_SIZE, '', 'all', 'desc')
-  }, [reload])
+  }, [forceLoading, reload])
 
   useEffect(
     () => () => {
@@ -184,6 +187,7 @@ export function DataTab<T>({
   }
 
   const searching = activeQuery.trim().length > 0
+  const showLoading = forceLoading || loading
   const rows = data?.content ?? []
   const columnCount = columns.length + (expand ? 1 : 0) + (locate ? 1 : 0) + (canEdit ? 1 : 0)
   const firstRow = rows[0]
@@ -290,7 +294,7 @@ export function DataTab<T>({
           <Button
             variant="ghost"
             size="sm"
-            disabled={loading}
+            disabled={showLoading}
             onClick={onToggleDirection}
             title={`Sort by ${sortLabel}: ${direction === 'desc' ? 'newest first' : 'oldest first'}`}
           >
@@ -300,10 +304,10 @@ export function DataTab<T>({
           <Button
             variant="ghost"
             size="sm"
-            disabled={loading || refreshing}
+            disabled={showLoading || refreshing}
             onClick={() => reload(page, size, activeQuery, field, direction, { silent: true })}
           >
-            <RotateCw className={loading || refreshing ? 'animate-spin' : ''} />
+            <RotateCw className={showLoading || refreshing ? 'animate-spin' : ''} />
             Refresh
           </Button>
         </div>
@@ -324,7 +328,7 @@ export function DataTab<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading &&
+            {showLoading &&
               Array.from({ length: SKELETON_ROWS }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`} className="hover:bg-transparent">
                   {expand && <TableCell className="w-[40px]" />}
@@ -356,7 +360,7 @@ export function DataTab<T>({
                 </TableRow>
               ))}
 
-            {!loading &&
+            {!showLoading &&
               rows.map((row) => {
                 const id = rowKey(row)
                 const isExpanded = expandedIds.has(id)
@@ -424,7 +428,7 @@ export function DataTab<T>({
                 )
               })}
 
-            {!loading && rows.length === 0 && (
+            {!showLoading && rows.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={columnCount}
@@ -464,7 +468,7 @@ export function DataTab<T>({
           <Button
             variant="outline"
             size="sm"
-            disabled={loading || page <= 0}
+            disabled={showLoading || page <= 0}
             onClick={() => reload(page - 1, size, activeQuery, field, direction)}
           >
             Previous
@@ -473,7 +477,7 @@ export function DataTab<T>({
           <Button
             variant="outline"
             size="sm"
-            disabled={loading || !data || page + 1 >= data.totalPages}
+            disabled={showLoading || !data || page + 1 >= data.totalPages}
             onClick={() => reload(page + 1, size, activeQuery, field, direction)}
           >
             Next

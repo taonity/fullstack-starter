@@ -20,6 +20,7 @@ interface AppInfoPanelProps {
   /** Compact mode tightens spacing/typography for the login card. */
   compact?: boolean
   className?: string
+  forceLoading?: boolean
 }
 
 /**
@@ -35,10 +36,11 @@ const LABELS = ['Backend', 'Frontend'] as const
  * Displays every field returned by the backend Spring Boot Actuator `/actuator/info`
  * endpoint and the frontend build metadata. Used on the login screen and the About tab.
  */
-export function AppInfoPanel({ compact = false, className }: AppInfoPanelProps) {
+export function AppInfoPanel({ compact = false, className, forceLoading = false }: AppInfoPanelProps) {
   const [sources, setSources] = useState<AppInfoSource[] | null>(null)
 
   useEffect(() => {
+    if (forceLoading) return
     let active = true
     Promise.all([fetchBackendInfo(), fetchFrontendInfo()]).then(([backend, frontend]) => {
       if (!active) return
@@ -50,7 +52,9 @@ export function AppInfoPanel({ compact = false, className }: AppInfoPanelProps) 
     return () => {
       active = false
     }
-  }, [])
+  }, [forceLoading])
+
+  const visibleSources = forceLoading ? null : sources
 
   return (
     <div className={className}>
@@ -59,7 +63,7 @@ export function AppInfoPanel({ compact = false, className }: AppInfoPanelProps) 
           <InfoCard
             key={label}
             label={label}
-            source={sources?.[index] ?? null}
+            source={visibleSources?.[index] ?? null}
             compact={compact}
           />
         ))}

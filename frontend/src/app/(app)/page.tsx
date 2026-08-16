@@ -8,7 +8,7 @@ import ErrorNotification from '@/components/ErrorNotification'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import DataConsole from '@/features/console/DataConsole'
-import { DevLoginSwitcher } from '@/features/console/DevLoginSwitcher'
+import { isDevLoadingEnabled, useDevLoading } from '@/features/console/devLoading'
 
 interface AuthenticatedUser {
   email: string
@@ -18,15 +18,21 @@ export default function Home() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const forceLoading = useDevLoading()
 
   useEffect(() => {
+    if (forceLoading || isDevLoadingEnabled()) {
+      setLoading(true)
+      return
+    }
+
     async function checkAuth() {
       const result = await fetchAuthenticatedUserStatus()
 
       if (result.status === 'authenticated') {
         setUser(result.data)
       } else if (result.status === 'unauthenticated') {
-        window.location.href = '/login'
+        if (!isDevLoadingEnabled()) window.location.href = '/login'
         return
       } else {
         setError(result.message)
@@ -36,7 +42,7 @@ export default function Home() {
     }
 
     checkAuth()
-  }, [])
+  }, [forceLoading])
 
   const handleLogout = async () => {
     try {
@@ -58,7 +64,7 @@ export default function Home() {
         <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-3 pr-10 min-[1300px]:pr-0">
           <div className="flex min-w-0 items-baseline gap-2">
             <span className="text-lg font-semibold">Data console</span>
-            {loading ? (
+            {loading || forceLoading ? (
               <Skeleton className="h-4 w-40" />
             ) : (
               user && (
@@ -73,10 +79,14 @@ export default function Home() {
 
         <main className="pt-4">
           {error && <ErrorNotification message={error} onClose={() => setError(null)} />}
-          {!loading && user && <DataConsole />}
+          {(loading || forceLoading || user) && (
+            <DataConsole
+              enabled={user !== null && !forceLoading}
+              forceLoading={forceLoading}
+            />
+          )}
         </main>
       </div>
-      {!loading && user && <DevLoginSwitcher />}
     </div>
   )
 }

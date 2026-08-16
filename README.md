@@ -42,7 +42,7 @@ mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profil
 Start the frontend in another terminal:
 
 ```bash
-npm ci --prefix frontend; npm run dev --prefix frontend
+npm install --prefix frontend; npm run dev --prefix frontend
 ```
 
 The backend runs on `http://127.0.0.1:8080`; the frontend runs on `http://127.0.0.1:3000`.

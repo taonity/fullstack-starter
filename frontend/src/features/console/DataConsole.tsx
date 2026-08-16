@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import ErrorNotification from '@/components/ErrorNotification'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,13 +28,39 @@ const ROLE_BADGE: Record<ConsoleRole, 'default' | 'secondary' | 'outline'> = {
   NONE: 'outline',
 }
 
-type TabKey = 'about' | 'config' | 'admin'
+const LOADING_ADMIN_ACCESS: AccessInfo = {
+  email: '',
+  displayName: '',
+  role: 'OWNER',
+  accessStatus: 'APPROVED',
+  requestedRole: null,
+  canView: true,
+  canEdit: true,
+  isAdmin: true,
+  isOwner: true,
+}
 
-export default function DataConsole() {
+type TabKey = 'about' | 'config' | 'admin'
+const TAB_STORAGE_KEY = 'console.activeTab'
+
+function storedTab(): TabKey {
+  const value = localStorage.getItem(TAB_STORAGE_KEY)
+  return value === 'config' || value === 'admin' ? value : 'about'
+}
+
+export default function DataConsole({
+  enabled = true,
+  forceLoading = false,
+}: {
+  enabled?: boolean
+  forceLoading?: boolean
+}) {
   const [access, setAccess] = useState<AccessInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabKey>('about')
+  const [tabRestored, setTabRestored] = useState(false)
+  const [tabAnimationsReady, setTabAnimationsReady] = useState(false)
   const [pendingCount, setPendingCount] = useState<number | null>(null)
   // Tabs are mounted lazily on first visit and then kept mounted (see keepMounted below), so
   // switching back to an already-seen tab restores its state instantly instead of replaying the
@@ -44,6 +70,7 @@ export default function DataConsole() {
 
   const selectTab = useCallback((next: TabKey) => {
     setTab(next)
+    localStorage.setItem(TAB_STORAGE_KEY, next)
     setVisited((prev) => {
       if (prev.has(next)) return prev
       const updated = new Set(prev)
@@ -62,14 +89,34 @@ export default function DataConsole() {
     }
   }, [])
 
+  useLayoutEffect(() => {
+    const restored = storedTab()
+    setTab(restored)
+    setVisited(new Set<TabKey>([restored]))
+    setTabRestored(true)
+  }, [])
+
   useEffect(() => {
+    if (!tabRestored) return
+    const frame = requestAnimationFrame(() => setTabAnimationsReady(true))
+    return () => cancelAnimationFrame(frame)
+  }, [tabRestored])
+
+  useEffect(() => {
+    if (!enabled) return
     void loadAccess()
-  }, [loadAccess])
+  }, [enabled, loadAccess])
+
+  useEffect(() => {
+    if (!forceLoading && !loading && access && tab === 'admin' && !access.isAdmin) {
+      selectTab('about')
+    }
+  }, [access, forceLoading, loading, selectTab, tab])
 
   // Load the pending-request count independently of the Admin tab so the tab badge is accurate
   // even before an admin opens the tab (the tab is mounted lazily).
   useEffect(() => {
-    if (!access?.isAdmin) return
+    if (forceLoading || !access?.isAdmin) return
     let active = true
     consoleApi
       .listPendingRequests()
@@ -82,18 +129,11 @@ export default function DataConsole() {
     return () => {
       active = false
     }
-  }, [access?.isAdmin])
+  }, [access?.isAdmin, forceLoading])
 
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-3">
-        <Skeleton className="h-8 w-72" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    )
-  }
+  const isLoading = forceLoading || loading
 
-  if (access && !access.canView) {
+  if (!isLoading && access && !access.canView) {
     return (
       <div className="flex flex-col gap-3">
         {error && <ErrorNotification message={error} onClose={() => setError(null)} />}
@@ -102,31 +142,34 @@ export default function DataConsole() {
     )
   }
 
-  if (!access) {
+  if (!isLoading && !access) {
     return error ? (
       <ErrorNotification message={error} onClose={() => setError(null)} />
     ) : null
   }
 
+  const canView = access?.canView === true
+  const showAdmin = isLoading || access?.isAdmin === true
+  const selectedTab = !isLoading && tab === 'admin' && !access?.isAdmin ? 'about' : tab
   const hasPending = (pendingCount ?? 0) > 0
   const tabItems: Record<string, string> = {
     about: 'About',
     config: 'Config',
-    ...(access.isAdmin
+    ...(showAdmin
       ? { admin: hasPending ? `Admin (${pendingCount})` : 'Admin' }
       : {}),
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className={`flex flex-col gap-3 ${tabRestored ? '' : 'invisible'}`}>
       {error && <ErrorNotification message={error} onClose={() => setError(null)} />}
 
-      <Tabs value={tab} onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}>
+      <Tabs value={selectedTab} onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}>
         <div className="flex items-center justify-between gap-2">
           {/* Mobile: compact dropdown keeps every tab one tap away without hidden horizontal scroll. */}
           <Select
             items={tabItems}
-            value={tab}
+            value={selectedTab}
             onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}
           >
             <SelectTrigger size="sm" className="h-8 w-36 sm:hidden">
@@ -141,11 +184,25 @@ export default function DataConsole() {
             </SelectContent>
           </Select>
           {/* Tablet and up: full tab bar. */}
-          <TabsList variant="line" className="hidden h-9 sm:flex">
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="config">Config</TabsTrigger>
-            {access.isAdmin && (
-              <TabsTrigger value="admin" className="gap-1.5">
+          <TabsList variant="line" className="hidden h-9 min-w-48 justify-start sm:flex">
+            <TabsTrigger
+              value="about"
+              className={tabAnimationsReady ? undefined : 'transition-none after:transition-none'}
+            >
+              About
+            </TabsTrigger>
+            <TabsTrigger
+              value="config"
+              className={tabAnimationsReady ? undefined : 'transition-none after:transition-none'}
+            >
+              Config
+            </TabsTrigger>
+            {showAdmin && (
+              <TabsTrigger
+                value="admin"
+                className={`${tabAnimationsReady ? '' : 'transition-none after:transition-none'} gap-1.5`}
+                disabled={isLoading && !forceLoading && !access?.isAdmin}
+              >
                 Admin
                 {hasPending && (
                   <Badge
@@ -160,24 +217,37 @@ export default function DataConsole() {
             )}
           </TabsList>
           <div className="flex items-center gap-2">
-            <UpgradeAccessControl access={access} onUpdated={setAccess} onError={setError} />
-            <Badge variant={ROLE_BADGE[access.role]}>{access.role}</Badge>
+            {access ? (
+              <>
+                <UpgradeAccessControl access={access} onUpdated={setAccess} onError={setError} />
+                <Badge variant={ROLE_BADGE[access.role]}>{access.role}</Badge>
+              </>
+            ) : (
+              <Skeleton className="h-6 w-16 rounded-full" />
+            )}
           </div>
         </div>
 
         <TabsContent value="about" className="pt-2" keepMounted>
-          {visited.has('about') && <AppInfoPanel />}
+          {visited.has('about') && <AppInfoPanel forceLoading={forceLoading} />}
         </TabsContent>
 
         <TabsContent value="config" className="pt-2" keepMounted>
-          {visited.has('config') && <ConfigTab canEdit={access.isOwner} onError={setError} />}
+          {visited.has('config') && (
+            <ConfigTab
+              canEdit={access?.isOwner === true}
+              forceLoading={isLoading || !canView}
+              onError={setError}
+            />
+          )}
         </TabsContent>
 
-        {access.isAdmin && (
+        {showAdmin && (
           <TabsContent value="admin" className="pt-2" keepMounted>
             {visited.has('admin') && (
               <AdminPanel
-                access={access}
+                access={access?.isAdmin ? access : LOADING_ADMIN_ACCESS}
+                forceLoading={isLoading || !access?.isAdmin}
                 onError={setError}
                 onPendingCountChange={setPendingCount}
               />

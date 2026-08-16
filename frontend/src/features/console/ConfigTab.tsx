@@ -63,9 +63,11 @@ const STACKED_TYPES = new Set(['STRING', 'STRING_LIST', 'TEXT'])
 
 export function ConfigTab({
   canEdit,
+  forceLoading = false,
   onError,
 }: {
   canEdit: boolean
+  forceLoading?: boolean
   onError: (message: string) => void
 }) {
   const [schema, setSchema] = useState<ConfigSchema | null>(null)
@@ -92,8 +94,9 @@ export function ConfigTab({
   }, [applySchema, onError])
 
   useEffect(() => {
+    if (forceLoading) return
     void load()
-  }, [load])
+  }, [forceLoading, load])
 
   const groups = useMemo(() => {
     if (!schema) return []
@@ -168,13 +171,56 @@ export function ConfigTab({
 
   const discard = () => schema && setDrafts(draftsFromSchema(schema))
 
-  if (!schema) {
+  if (forceLoading || !schema) {
     return (
       <div className="flex flex-col gap-3">
-        <Skeleton className="h-9 w-full" />
-        <div className="flex gap-3">
-          <Skeleton className="hidden h-64 w-48 sm:block" />
-          <Skeleton className="h-64 flex-1" />
+        <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="relative flex-1 basis-56">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              disabled
+              placeholder="Search settings…"
+              className="h-8 pl-8"
+            />
+          </div>
+          <span className="hidden text-xs text-muted-foreground md:inline">
+            Applies live · no restart
+          </span>
+          {canEdit && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="h-8" disabled>
+                Discard
+              </Button>
+              <Button size="sm" className="h-8" disabled>
+                Save
+              </Button>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <nav className="hidden w-48 shrink-0 flex-col gap-1 sm:flex">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="flex h-8 items-center justify-between px-2.5">
+                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="size-3.5" />
+              </div>
+            ))}
+          </nav>
+          <section className="min-w-0 flex-1 overflow-hidden rounded-lg border">
+            <div className="divide-y">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex min-h-12 items-center gap-3 px-3 py-2">
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <Skeleton className="h-3.5 w-40" />
+                    <Skeleton className="h-2.5 w-56 max-w-full" />
+                  </div>
+                  <Skeleton className="h-7 w-28" />
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
     )

@@ -65,10 +65,12 @@ const AUDIT_COLUMNS: Column<AuditLog>[] = [
 
 export function AdminPanel({
   access,
+  forceLoading = false,
   onError,
   onPendingCountChange,
 }: {
   access: AccessInfo
+  forceLoading?: boolean
   onError: (message: string) => void
   onPendingCountChange?: (count: number) => void
 }) {
@@ -92,8 +94,11 @@ export function AdminPanel({
   }, [onError, onPendingCountChange])
 
   useEffect(() => {
+    if (forceLoading) return
     void loadRequests()
-  }, [loadRequests])
+  }, [forceLoading, loadRequests])
+
+  const visibleRequests = forceLoading ? null : requests
 
   const decide = async (req: PendingRequest, approve: boolean) => {
     setBusyId(req.googleId)
@@ -118,29 +123,36 @@ export function AdminPanel({
           <CardTitle className="text-base">Pending access requests</CardTitle>
         </CardHeader>
         <CardContent>
-          {!requests && (
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-            </div>
-          )}
-          {requests && requests.length === 0 && (
-            <p className="text-sm text-muted-foreground">No pending requests.</p>
-          )}
-          {requests && requests.length > 0 && (
-            <div className="overflow-hidden rounded-lg border">
-              <Table className="min-w-[640px]">
-                <TableHeader>
-                  <TableRow className="bg-muted/40">
-                    <TableHead>User</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Requested</TableHead>
-                    <TableHead>Grant</TableHead>
-                    <TableHead className="text-right">Decision</TableHead>
+          <div className="overflow-hidden rounded-lg border">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead>Grant</TableHead>
+                  <TableHead className="text-right">Decision</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!visibleRequests &&
+                  Array.from({ length: 2 }).map((_, index) => (
+                    <TableRow key={index} className="hover:bg-transparent">
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-[120px]" /></TableCell>
+                      <TableCell><Skeleton className="ml-auto h-8 w-36" /></TableCell>
+                    </TableRow>
+                  ))}
+                {visibleRequests?.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                      No pending requests.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {requests.map((r) => (
+                )}
+                {visibleRequests?.map((r) => (
                     <TableRow key={r.googleId}>
                       <TableCell className="font-medium">{r.displayName}</TableCell>
                       <TableCell className="text-muted-foreground">{r.email}</TableCell>
@@ -186,14 +198,13 @@ export function AdminPanel({
                       </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
-      <UsersCard access={access} onError={onError} />
+      <UsersCard access={access} forceLoading={forceLoading} onError={onError} />
 
       <Card>
         <CardHeader>
@@ -208,6 +219,7 @@ export function AdminPanel({
             rowKey={(a) => a.id}
             load={(page, size, q, field) => consoleApi.listAuditLogs(page, size, q, field)}
             emptyLabel="No audit entries."
+            forceLoading={forceLoading}
             onError={onError}
           />
         </CardContent>
@@ -226,9 +238,11 @@ const ROLE_LABELS: Record<ConsoleRole, string> = {
 
 function UsersCard({
   access,
+  forceLoading,
   onError,
 }: {
   access: AccessInfo
+  forceLoading: boolean
   onError: (message: string) => void
 }) {
   const [users, setUsers] = useState<UserSummary[] | null>(null)
@@ -243,8 +257,11 @@ function UsersCard({
   }, [onError])
 
   useEffect(() => {
+    if (forceLoading) return
     void load()
-  }, [load])
+  }, [forceLoading, load])
+
+  const visibleUsers = forceLoading ? null : users
 
   // Owners can assign any role; admins only up to EDITOR.
   const assignableRoles: ConsoleRole[] = access.isOwner
@@ -282,28 +299,34 @@ function UsersCard({
         </p>
       </CardHeader>
       <CardContent>
-        {!users && (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-          </div>
-        )}
-        {users && users.length === 0 && (
-          <p className="text-sm text-muted-foreground">No users yet.</p>
-        )}
-        {users && users.length > 0 && (
-          <div className="overflow-hidden rounded-lg border">
-            <Table className="min-w-[560px]">
-              <TableHeader>
-                <TableRow className="bg-muted/40">
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[180px]">Role</TableHead>
+        <div className="overflow-hidden rounded-lg border">
+          <Table className="min-w-[560px]">
+            <TableHeader>
+              <TableRow className="bg-muted/40">
+                <TableHead>User</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[180px]">Role</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {!visibleUsers &&
+                Array.from({ length: 2 }).map((_, index) => (
+                  <TableRow key={index} className="hover:bg-transparent">
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-40" /></TableCell>
+                  </TableRow>
+                ))}
+              {visibleUsers?.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
+                    No users yet.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u) => {
+              )}
+              {visibleUsers?.map((u) => {
                   const isSelf = u.email === access.email
                   // Only the owner may change an existing admin/owner.
                   const targetIsAdmin = u.role === 'ADMIN' || u.role === 'OWNER'
@@ -342,10 +365,9 @@ function UsersCard({
                     </TableRow>
                   )
                 })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   )
