@@ -11,6 +11,9 @@ server:
 spring:
   main:
     allow-bean-definition-overriding: true
+  profiles:
+    group:
+      local: plain-log,active-properties-logging
   security:
     oauth2:
       client:

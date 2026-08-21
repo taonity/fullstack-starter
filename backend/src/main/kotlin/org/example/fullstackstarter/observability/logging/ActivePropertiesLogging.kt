@@ -8,7 +8,7 @@ import org.springframework.core.env.EnumerablePropertySource
 import org.springframework.stereotype.Component
 
 @Component
-@Profile("local")
+@Profile("active-properties-logging")
 class ActivePropertiesLogging(
     private val environment: ConfigurableEnvironment
 ) : CommandLineRunner {

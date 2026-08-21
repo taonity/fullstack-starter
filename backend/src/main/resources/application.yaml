@@ -52,7 +52,7 @@ management:
 spring:
   profiles:
     group:
-      local: plain-log
+      local: plain-log,active-properties-logging
   application:
     name: fullstack-starter
   session:
