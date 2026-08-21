@@ -152,12 +152,13 @@ export default function DataConsole({
   const showAdmin = isLoading || access?.isAdmin === true
   const selectedTab = !isLoading && tab === 'admin' && !access?.isAdmin ? 'about' : tab
   const hasPending = (pendingCount ?? 0) > 0
+  const pendingLabel = hasPending
+    ? `${pendingCount} pending access request${pendingCount === 1 ? '' : 's'}`
+    : 'No pending access requests'
   const tabItems: Record<string, string> = {
     about: 'About',
     config: 'Config',
-    ...(showAdmin
-      ? { admin: hasPending ? `Admin (${pendingCount})` : 'Admin' }
-      : {}),
+    ...(showAdmin ? { admin: 'Admin' } : {}),
   }
 
   return (
@@ -200,19 +201,14 @@ export default function DataConsole({
             {showAdmin && (
               <TabsTrigger
                 value="admin"
-                className={`${tabAnimationsReady ? '' : 'transition-none after:transition-none'} gap-1.5`}
+                className={`${tabAnimationsReady ? '' : 'transition-none after:transition-none'} relative w-20 justify-center`}
                 disabled={isLoading && !forceLoading && !access?.isAdmin}
               >
-                Admin
-                {hasPending && (
-                  <Badge
-                    variant="destructive"
-                    className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px] leading-none tabular-nums"
-                    aria-label={`${pendingCount} pending access request${pendingCount === 1 ? '' : 's'}`}
-                  >
-                    {pendingCount}
-                  </Badge>
-                )}
+                <span className="text-center">Admin</span>
+                <span
+                  className={`pointer-events-none absolute -top-0.5 -right-0.5 size-2 rounded-full bg-destructive ${hasPending ? '' : 'invisible'}`}
+                  aria-label={pendingLabel}
+                />
               </TabsTrigger>
             )}
           </TabsList>

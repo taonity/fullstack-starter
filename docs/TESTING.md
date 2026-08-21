@@ -22,6 +22,12 @@ Single backend test:
 mvn -pl backend test -Dtest=LazyFetchingArchitectureTest
 ```
 
+Demo-data profile and idempotency:
+
+```bash
+mvn -B -pl backend -am test '-Dtest=DemoDataProfileTest' '-Dsurefire.failIfNoSpecifiedTests=false'
+```
+
 Smoke tests require Docker and both application images. The command below matches the registry in `templates/docker/.env.test`:
 
 ```bash

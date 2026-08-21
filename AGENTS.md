@@ -48,7 +48,7 @@ Backend runs on port **8080**, frontend on **3000**.
 | Logging  | `plain-log`      | *(default)*   |
 | General  | `local`          | *(none)*      |
 
-Local set: `h2,stub-google,local` (`local` auto-includes `plain-log`). Production set: `postgres,prod-google`. Stubs use WireMock (classpath mode).
+Local set: `h2,stub-google,local` (`local` auto-includes `plain-log`). Add `demo-data` for local feature fixtures. Production set: `postgres,prod-google`. Never activate `demo-data` in production. Stubs use WireMock (classpath mode).
 
 ## Conventions & Patterns
 
@@ -58,10 +58,13 @@ Local set: `h2,stub-google,local` (`local` auto-includes `plain-log`). Productio
 - **CSRF**: SPA pattern with `CookieCsrfTokenRepository` + `SpaCsrfTokenRequestHandler`. Frontend reads CSRF cookie and sends `X-XSRF-TOKEN` header on mutating requests.
 - **Frontend API proxy**: every backend call is proxied through Next.js API routes in `src/app/api/`. Never call the backend directly from client components.
 - __DB migrations__: Flyway SQL scripts in `templates/docker/flyway/sql/tables/` (naming: `V100000__description.sql`). H2 profile uses Flyway with `filesystem:` locations.
+- **Demo data**: when a persistent feature benefits from local examples, add an idempotent `DemoDataContributor` in that feature package under `@Profile("demo-data")`. Use deterministic markers, never overwrite existing records, and extend `DemoDataProfileTest`.
 
 ## Testing
 
 - **MVC integration tests**: use `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("h2")` with `oauth2Login()` mock.
+- **Authenticated browser checks**: protected frontend functionality requires a session. If Playwright or another browser tool lands on `/login` or receives `401`, open **Developer tools** using the bottom-right bug button (or `Alt+Shift+D`), choose **Owner (test@example.com)**, wait for the redirect to `/`, and only then inspect the protected UI. Reuse that authenticated browser page for subsequent checks.
+- Do not report `/login`, missing protected elements, or pre-login `401` responses as application failures until the dev Owner shortcut has been used.
 - Run tests from the repository root with `mvn test`.
 
 ## Adding Features

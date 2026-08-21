@@ -124,7 +124,14 @@ export function AdminPanel({
         </CardHeader>
         <CardContent>
           <div className="overflow-hidden rounded-lg border">
-            <Table className="min-w-[640px]">
+            <Table className="min-w-[640px] table-fixed [&_td]:py-2 [&_tr]:h-12">
+              <colgroup>
+                <col className="w-[18%]" />
+                <col className="w-[26%]" />
+                <col className="w-[14%]" />
+                <col className="w-[132px]" />
+                <col className="w-[176px]" />
+              </colgroup>
               <TableHeader>
                 <TableRow className="bg-muted/40">
                   <TableHead>User</TableHead>
@@ -137,7 +144,7 @@ export function AdminPanel({
               <TableBody>
                 {!visibleRequests &&
                   Array.from({ length: 2 }).map((_, index) => (
-                    <TableRow key={index} className="hover:bg-transparent">
+                    <TableRow key={index} className="h-12 hover:bg-transparent">
                       <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -153,9 +160,9 @@ export function AdminPanel({
                   </TableRow>
                 )}
                 {visibleRequests?.map((r) => (
-                    <TableRow key={r.googleId}>
-                      <TableCell className="font-medium">{r.displayName}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.email}</TableCell>
+                    <TableRow key={r.googleId} className="h-12">
+                      <TableCell className="truncate font-medium">{r.displayName}</TableCell>
+                      <TableCell className="truncate text-muted-foreground">{r.email}</TableCell>
                       <TableCell>{r.requestedRole ?? '—'}</TableCell>
                       <TableCell>
                         <Select
@@ -300,7 +307,13 @@ function UsersCard({
       </CardHeader>
       <CardContent>
         <div className="overflow-hidden rounded-lg border">
-          <Table className="min-w-[560px]">
+          <Table className="min-w-[560px] table-fixed [&_td]:py-2 [&_tr]:h-12">
+            <colgroup>
+              <col className="w-[24%]" />
+              <col className="w-[34%]" />
+              <col className="w-[20%]" />
+              <col className="w-[180px]" />
+            </colgroup>
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead>User</TableHead>
@@ -311,8 +324,8 @@ function UsersCard({
             </TableHeader>
             <TableBody>
               {!visibleUsers &&
-                Array.from({ length: 2 }).map((_, index) => (
-                  <TableRow key={index} className="hover:bg-transparent">
+                  Array.from({ length: 2 }).map((_, index) => (
+                  <TableRow key={index} className="h-12 hover:bg-transparent">
                     <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
@@ -332,9 +345,9 @@ function UsersCard({
                   const targetIsAdmin = u.role === 'ADMIN' || u.role === 'OWNER'
                   const locked = isSelf || (targetIsAdmin && !access.isOwner)
                   return (
-                    <TableRow key={u.googleId}>
-                      <TableCell className="font-medium">{u.displayName}</TableCell>
-                      <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableRow key={u.googleId} className="h-12">
+                      <TableCell className="truncate font-medium">{u.displayName}</TableCell>
+                      <TableCell className="truncate text-muted-foreground">{u.email}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="font-normal">
                           {u.accessStatus}

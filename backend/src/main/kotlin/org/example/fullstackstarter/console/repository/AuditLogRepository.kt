@@ -11,6 +11,8 @@ import java.time.Instant
 
 @Repository
 interface AuditLogRepository : JpaRepository<AuditLogEntity, String> {
+    fun existsByActorGoogleId(actorGoogleId: String): Boolean
+
     fun findAllByOrderByOccurredAtDesc(pageable: Pageable): Page<AuditLogEntity>
 
     @Query(

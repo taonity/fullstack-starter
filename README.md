@@ -27,7 +27,7 @@ Choose one profile from each resource group.
 | Logging | `plain-log` (included by `local`) | default |
 | General | `local` | none |
 
-Local development uses `h2,stub-google,local`; production uses `postgres,prod-google`.
+Local development uses `h2,stub-google,local`; production uses `postgres,prod-google`. Add the optional `demo-data` profile to seed local feature fixtures.
 
 ## Run locally
 
@@ -37,6 +37,12 @@ Start the backend:
 
 ```bash
 mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
+```
+
+Start the backend with pending access requests and audit records:
+
+```bash
+mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local,demo-data"'
 ```
 
 Start the frontend in another terminal:
@@ -63,3 +69,8 @@ See [Deployment](docs/DEPLOYMENT.md) for production configuration and Compose re
 - [Database and migrations](docs/DATABASE.md)
 - [Testing](docs/TESTING.md)
 - [Deployment](docs/DEPLOYMENT.md)
+
+fix notif windowses
+make the sys info more informative
+rethink logging env vars in debug logs
+optimise the playwright

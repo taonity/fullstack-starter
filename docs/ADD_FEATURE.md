@@ -16,15 +16,17 @@ Use this checklist to add one vertical feature without bypassing existing bounda
    Validate request DTOs and return deliberate status codes.
 6. If the schema changes, inspect [`templates/docker/flyway/sql/tables`](../templates/docker/flyway/sql/tables/) and use the next unused Flyway version.
    Update [Database](DATABASE.md) when the schema workflow changes.
-7. Add a Next.js API route so browser code never calls the backend directly.
+7. If persisted data is useful for local evaluation, add an idempotent `DemoDataContributor` beside the feature under `@Profile("demo-data")`.
+   Use deterministic markers, do not overwrite existing records, and extend `DemoDataProfileTest`.
+8. Add a Next.js API route so browser code never calls the backend directly.
    Use the focused [`user` proxy](../frontend/src/app/api/user/route.ts) or the [`console` catch-all proxy](../frontend/src/app/api/console/%5B...path%5D/route.ts) as the closest pattern.
-8. For POST, PUT, PATCH, and DELETE routes, forward the `X-XSRF-TOKEN` header with the authenticated session.
+9. For POST, PUT, PATCH, and DELETE routes, forward the `X-XSRF-TOKEN` header with the authenticated session.
    Preserve backend response status, headers, and body.
-9. Build the UI inside the relevant feature directory.
+10. Build the UI inside the relevant feature directory.
    [`frontend/src/features/console`](../frontend/src/features/console/) shows the current feature organization.
-10. Add focused backend tests for authorization, validation, service behavior, persistence, and error mapping as applicable.
-    Add frontend tests for proxy and UI behavior.
-11. Follow [Testing](TESTING.md) for current commands and test patterns.
+11. Add focused backend tests for authorization, validation, service behavior, persistence, error mapping, and demo-data idempotency as applicable.
+   Add frontend tests for proxy and UI behavior.
+12. Follow [Testing](TESTING.md) for current commands and test patterns.
 
 ## Verify
 

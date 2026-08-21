@@ -330,7 +330,7 @@ export function DataTab<T>({
           <TableBody>
             {showLoading &&
               Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`} className="hover:bg-transparent">
+                <TableRow key={`skeleton-${i}`} className="h-[33px] hover:bg-transparent">
                   {expand && <TableCell className="w-[40px]" />}
                   {columns.map((c, idx) => (
                     <TableCell key={c.key} className={c.cellClassName}>
@@ -366,7 +366,7 @@ export function DataTab<T>({
                 const isExpanded = expandedIds.has(id)
                 return (
                   <Fragment key={id}>
-                    <TableRow className={cn(highlightId === id && 'bg-primary/10')}>
+                    <TableRow className={cn('h-[33px]', highlightId === id && 'bg-primary/10')}>
                       {expand && (
                         <TableCell className="w-[40px]">
                           <Button
