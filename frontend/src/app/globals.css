@@ -84,30 +84,86 @@ html {
 
 /* Error notification */
 .error-notification {
+  position: fixed;
+  z-index: 100;
+  top: 1rem;
+  left: 50%;
+  width: min(calc(100% - 2rem), 28rem);
+  transform: translateX(-50%);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem;
   background: #fef2f2;
   border: 1px solid #fecaca;
-  border-radius: 6px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgb(127 29 29 / 0.14), 0 3px 8px rgb(0 0 0 / 0.08);
   color: #991b1b;
-  margin-bottom: 1rem;
+  animation: notification-enter 180ms ease-out;
+}
+
+.error-notification p {
+  flex: 1;
+  margin: 0;
+  padding-top: 0.125rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.error-notification__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  flex: none;
 }
 
 .error-notification button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.375rem -0.375rem -0.375rem 0;
+  place-items: center;
   background: none;
   border: none;
-  font-size: 1.25rem;
+  border-radius: 4px;
   cursor: pointer;
   color: #991b1b;
-  line-height: 1;
-  padding: 0 0.25rem;
+  padding: 0;
 }
 
-.error-notification button:hover {
-  opacity: 0.7;
+.error-notification button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.error-notification button:hover,
+.error-notification button:focus-visible {
+  background: #fee2e2;
+}
+
+.error-notification button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+@keyframes notification-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -0.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .error-notification {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .error-notification {
+    top: 3.5rem;
+  }
 }
 
 /* Dark-theme overrides for the hand-rolled global classes above (the shadcn/Tailwind
@@ -120,10 +176,12 @@ html {
   background: #2a1416;
   border-color: #5b2326;
   color: #fca5a5;
+  box-shadow: 0 10px 25px rgb(0 0 0 / 0.3), 0 3px 8px rgb(0 0 0 / 0.2);
 }
 
-.dark .error-notification button {
-  color: #fca5a5;
+.dark .error-notification button:hover,
+.dark .error-notification button:focus-visible {
+  background: #451a1d;
 }
 
 @theme inline {
