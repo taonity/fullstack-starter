@@ -6,12 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  commitUrl,
   deploymentTime,
   fetchBackendInfo,
   fetchFrontendInfo,
-  flattenInfo,
   formatRelativeAge,
+  infoRows,
   type AppInfoSource,
   type InfoRow,
 } from '@/lib/appInfo'
@@ -28,13 +27,13 @@ interface AppInfoPanelProps {
  * height on the next mount and the layout does not jump. Seeded with the typical field counts
  * so even the very first load is close to the final size.
  */
-const rowCountCache: Record<string, number> = { Backend: 11, Frontend: 9 }
+const rowCountCache: Record<string, number> = { Backend: 4, Frontend: 4 }
 
 const LABELS = ['Backend', 'Frontend'] as const
 
 /**
- * Displays every field returned by the backend Spring Boot Actuator `/actuator/info`
- * endpoint and the frontend build metadata. Used on the login screen and the About tab.
+ * Displays curated release information for the backend and frontend. Used on the login
+ * screen and the About tab.
  */
 export function AppInfoPanel({ compact = false, className, forceLoading = false }: AppInfoPanelProps) {
   const [sources, setSources] = useState<AppInfoSource[] | null>(null)
@@ -82,7 +81,7 @@ function InfoCard({
   compact: boolean
 }) {
   const loading = source === null
-  const rows = loading ? [] : flattenInfo(source.data)
+  const rows = loading ? [] : infoRows(source.data)
   const available = !loading && rows.length > 0
   const deployedAt = loading ? null : deploymentTime(source.data)
   const deployedAgo = formatRelativeAge(deployedAt)
@@ -99,11 +98,9 @@ function InfoCard({
           <span>{label}</span>
           {loading ? (
             <Skeleton className="h-5 w-16 rounded-full" />
-          ) : (
-            <Badge variant={available ? 'secondary' : 'outline'} className="font-normal">
-              {available ? 'online' : 'unavailable'}
-            </Badge>
-          )}
+          ) : !available ? (
+            <Badge variant="outline" className="font-normal">unavailable</Badge>
+          ) : null}
         </CardTitle>
         {loading ? (
           <Skeleton className="mt-1 h-3 w-32" />
@@ -134,7 +131,7 @@ function InfoCard({
               <div key={row.key}>
                 {index > 0 && <Separator className="my-1.5" />}
                 <div className="flex items-baseline justify-between gap-4">
-                  <dt className="shrink-0 font-mono text-xs text-muted-foreground">{row.key}</dt>
+                  <dt className="shrink-0 text-xs text-muted-foreground">{row.label}</dt>
                   <dd className="min-w-0 break-all text-right text-xs font-medium tabular-nums">
                     <InfoValueCell row={row} />
                   </dd>
@@ -151,13 +148,12 @@ function InfoCard({
 }
 
 function InfoValueCell({ row }: { row: InfoRow }) {
-  const url = commitUrl(row)
-  if (!url) {
+  if (!row.href) {
     return <>{row.value}</>
   }
   return (
     <a
-      href={url}
+      href={row.href}
       target="_blank"
       rel="noopener noreferrer"
       className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"

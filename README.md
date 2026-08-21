@@ -69,8 +69,3 @@ See [Deployment](docs/DEPLOYMENT.md) for production configuration and Compose re
 - [Database and migrations](docs/DATABASE.md)
 - [Testing](docs/TESTING.md)
 - [Deployment](docs/DEPLOYMENT.md)
-
-fix notif windowses
-make the sys info more informative
-rethink logging env vars in debug logs
-optimise the playwright

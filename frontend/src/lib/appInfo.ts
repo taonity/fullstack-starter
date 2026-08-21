@@ -17,33 +17,20 @@ export interface AppInfoSource {
   data: InfoObject | null
 }
 
-/** A single flattened key/value row, e.g. { key: "git.commit.id.abbrev", value: "18a81dc" }. */
+/** A curated release-information row displayed in the About panel. */
 export interface InfoRow {
   key: string
+  label: string
   value: string
+  href?: string
 }
 
 /** Base URL of the GitHub repository, used to linkify commit SHAs. */
-export const GITHUB_REPO_URL = (
-  process.env.NEXT_PUBLIC_GITHUB_REPO_URL || 'https://github.com/example/fullstack-starter'
-).replace(/\.git$/, '').replace(/\/$/, '')
+export const GITHUB_REPO_URL = process.env.NEXT_PUBLIC_GITHUB_REPO_URL
+  ?.replace(/\.git$/, '')
+  .replace(/\/$/, '')
 
-/**
- * Returns a GitHub commit URL when the row looks like a commit SHA (a `commit` key whose
- * value is a 7–40 char hex string), otherwise null. Describe values like "18a81dc-dirty"
- * are intentionally excluded since they are not addressable commits.
- */
-export function commitUrl(row: InfoRow): string | null {
-  if (!/commit/i.test(row.key)) {
-    return null
-  }
-  if (!/^[0-9a-f]{7,40}$/i.test(row.value)) {
-    return null
-  }
-  return `${GITHUB_REPO_URL}/commit/${row.value}`
-}
-
-/** Fetches the frontend's own build/runtime info. */
+/** Fetches the frontend's own build info. */
 export async function fetchFrontendInfo(): Promise<InfoObject | null> {
   return fetchInfo('/api/actuator/info')
 }
@@ -69,7 +56,7 @@ async function fetchInfo(url: string): Promise<InfoObject | null> {
  * Ordered list of info fields that best represent when the running artifact was built/deployed.
  * The first field that parses as a valid date wins.
  */
-const DEPLOYMENT_TIME_KEYS = ['build.time', 'git.build.time', 'git.commit.time'] as const
+const DEPLOYMENT_TIME_KEYS = ['build.time', 'git.build.time'] as const
 
 /**
  * Returns the ISO timestamp that best represents when the artifact was deployed (its build time),
@@ -79,11 +66,10 @@ export function deploymentTime(data: InfoObject | null): string | null {
   if (!data) {
     return null
   }
-  const rows = flattenInfo(data)
   for (const key of DEPLOYMENT_TIME_KEYS) {
-    const row = rows.find((r) => r.key === key)
-    if (row && !Number.isNaN(new Date(row.value).getTime())) {
-      return row.value
+    const value = valueAtPath(data, key)
+    if (value && !Number.isNaN(new Date(value).getTime())) {
+      return value
     }
   }
   return null
@@ -125,39 +111,70 @@ export function formatRelativeAge(iso: string | null | undefined): string | null
   return null
 }
 
-/**
- * Flattens a nested info object into dotted-key rows so that every provided field is
- * rendered regardless of the payload's shape.
- */
-export function flattenInfo(data: InfoObject | null): InfoRow[] {
+const INFO_FIELDS = [
+  { key: 'version', label: 'Version', paths: ['app.version', 'build.version'] },
+  {
+    key: 'revision',
+    label: 'Revision',
+    paths: ['git.commit', 'git.commit.id', 'git.commit.id.full', 'git.commit.id.abbrev'],
+  },
+  { key: 'branch', label: 'Branch', paths: ['git.branch'] },
+  { key: 'built', label: 'Built', paths: ['build.time'] },
+] as const
+
+/** Selects and labels the release metadata useful to people viewing the About panel. */
+export function infoRows(data: InfoObject | null): InfoRow[] {
   if (!data) {
     return []
   }
   const rows: InfoRow[] = []
-
-  const walk = (value: InfoValue, path: string) => {
-    if (value === null || value === undefined) {
-      rows.push({ key: path, value: '—' })
-      return
+  for (const { key, label, paths } of INFO_FIELDS) {
+    const value = paths.map((path) => valueAtPath(data, path)).find(isUsefulValue)
+    if (!value) {
+      continue
     }
-    if (Array.isArray(value)) {
-      value.forEach((item, index) => walk(item, `${path}[${index}]`))
-      return
+    if (key === 'revision') {
+      rows.push({
+        key,
+        label,
+        value: value.slice(0, 7),
+        href: commitUrl(value),
+      })
+    } else if (key === 'built') {
+      rows.push({ key, label, value: formatBuildTime(value) })
+    } else {
+      rows.push({ key, label, value })
     }
-    if (typeof value === 'object') {
-      const entries = Object.entries(value)
-      if (entries.length === 0) {
-        rows.push({ key: path, value: '—' })
-        return
-      }
-      for (const [childKey, childValue] of entries) {
-        walk(childValue, path ? `${path}.${childKey}` : childKey)
-      }
-      return
-    }
-    rows.push({ key: path, value: String(value) })
   }
-
-  walk(data, '')
   return rows
+}
+
+function formatBuildTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC')
+}
+
+function valueAtPath(data: InfoObject, path: string): string | null {
+  let value: InfoValue | undefined = data
+  for (const part of path.split('.')) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null
+    }
+    value = value[part]
+  }
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : null
+}
+
+function isUsefulValue(value: string | null): value is string {
+  return Boolean(value && value.toLowerCase() !== 'unknown')
+}
+
+function commitUrl(commit: string): string | undefined {
+  if (!GITHUB_REPO_URL || !/^[0-9a-f]{7,40}$/i.test(commit)) {
+    return undefined
+  }
+  return `${GITHUB_REPO_URL}/commit/${commit}`
 }

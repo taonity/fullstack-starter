@@ -177,11 +177,9 @@ jobs:
         packageName=${{ steps.extract_frontend_package_name.outputs.packageName }}
         tag=${{ needs.release-prepare.outputs.tag }}
         commitSha=$(git rev-parse HEAD)
-        commitShort=$(git rev-parse --short HEAD)
         branch=$(git rev-parse --abbrev-ref HEAD)
         docker build \
           --build-arg GIT_COMMIT_SHA="$commitSha" \
-          --build-arg GIT_COMMIT_SHORT="$commitShort" \
           --build-arg GIT_BRANCH="$branch" \
           -t "$username/$packageName:latest" -t "$username/$packageName:$tag" frontend/
 

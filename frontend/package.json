@@ -1,6 +1,7 @@
 {
   "name": "fullstack-starter-frontend",
   "version": "0.1.0",
+  "repository": "https://github.com/taonity/fullstack-starter",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 -H 127.0.0.1",

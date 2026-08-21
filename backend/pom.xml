@@ -258,8 +258,8 @@
                     <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
                     <commitIdGenerationMode>full</commitIdGenerationMode>
                     <includeOnlyProperties>
-                        <includeOnlyProperty>^git.commit.id.*</includeOnlyProperty>
-                        <includeOnlyProperty>^git.commit.time$</includeOnlyProperty>
+                        <includeOnlyProperty>^git.branch$</includeOnlyProperty>
+                        <includeOnlyProperty>^git.commit.id.full$</includeOnlyProperty>
                     </includeOnlyProperties>
                 </configuration>
             </plugin>
