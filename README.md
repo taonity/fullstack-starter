@@ -25,9 +25,9 @@ Choose one profile from each resource group.
 | Database | `h2` | `postgres` |
 | OAuth2 | `stub-google` | `prod-google` |
 | Logging | `plain-log` (included by `local`) | default |
-| General | `local` | none |
+| Environment | `local` | `stage` or `prod` |
 
-Local development uses `h2,stub-google,local`; production uses `postgres,prod-google`. Add the optional `demo-data` profile to seed local feature fixtures.
+Local development uses `h2,stub-google,local`. Stage and production use only `stage` or `prod`; each environment profile includes `postgres` and `prod-google` and owns its non-secret deployment settings. Add the optional `demo-data` profile to seed local feature fixtures.
 
 ## Run locally
 

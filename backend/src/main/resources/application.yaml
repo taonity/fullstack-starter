@@ -4,18 +4,14 @@ server:
   servlet:
     session:
       timeout: 7d
-      cookie:
-        domain: ${SERVER_SERVLET_SESSION_COOKIE_DOMAIN}
-        name: ${SERVER_SERVLET_SESSION_COOKIE_NAME}
 
 app:
   minimised-http-servlet-logging: true
-  csrf-cookie-name: ${CSRF_COOKIE_NAME}
   cookie:
-    secure: ${COOKIE_SECURE:true}
-    same-site: ${COOKIE_SAME_SITE:Lax}
+    secure: true
+    same-site: Lax
   console:
-    owner-emails: ${CONSOLE_OWNER_EMAILS}
+    owner-emails: ${CONSOLE_OWNER_EMAILS:artiom.diulgher@gmail.com}
     admin-emails: ${CONSOLE_ADMIN_EMAILS:}
     max-page-size: 100
   retention:
@@ -53,6 +49,8 @@ spring:
   profiles:
     group:
       local: plain-log,active-properties-logging
+      stage: postgres-container,prod-google
+      prod: postgres-container,prod-google
   application:
     name: fullstack-starter
   session:
