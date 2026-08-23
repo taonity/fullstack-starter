@@ -14,6 +14,8 @@ spring:
   profiles:
     group:
       local: plain-log,active-properties-logging
+      stage: postgres-container,prod-google
+      prod: postgres-container,prod-google
   security:
     oauth2:
       client:

@@ -318,7 +318,6 @@
                 <docker-compose.full-path>
                     ${docker-compose.path}/${docker-compose.file}
                 </docker-compose.full-path>
-                <docker.registry>generaltao725</docker.registry>
             </properties>
             <build>
                 <plugins>
@@ -361,7 +360,7 @@
                                 <image>amazoncorretto:17</image>
                             </from>
                             <to>
-                                <image>${docker.registry}/${project.parent.artifactId}-${project.artifactId}:${project.version}</image>
+                                <image>generaltao725/${project.parent.artifactId}-${project.artifactId}:${project.version}</image>
                                 <tags>
                                     <tag>latest</tag>
                                 </tags>

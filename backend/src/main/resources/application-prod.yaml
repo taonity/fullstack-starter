@@ -1,0 +1,11 @@
+server:
+  servlet:
+    session:
+      cookie:
+        domain: taonity.org
+        name: JSESSIONID-FULLSTACK-STARTER-PROD
+
+app:
+  default-success-url: https://fullstack-starter.taonity.org
+  login-url: https://fullstack-starter.taonity.org/login
+  csrf-cookie-name: XSRF-TOKEN-FULLSTACK-STARTER-PROD
