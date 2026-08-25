@@ -53,6 +53,18 @@ npm install --prefix frontend; npm run dev --prefix frontend
 
 The backend runs on `http://127.0.0.1:8080`; the frontend runs on `http://127.0.0.1:3000`.
 
+Build the backend container image from the repository root:
+
+```bash
+mvn -pl backend -am -P build-docker-image package -DskipTests -Ddocker.registry=generaltao725
+```
+
+Build the frontend container image from the repository root:
+
+```bash
+docker build -t generaltao725/fullstack-starter-frontend:latest frontend
+```
+
 For the complete local stack with published images:
 
 ```bash
