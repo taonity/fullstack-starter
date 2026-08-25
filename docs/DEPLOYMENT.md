@@ -2,10 +2,10 @@
 
 ## Build images
 
-Run the image build from the repository root. Build both images with names that match `DOCKER_REGISTRY` in the deployment environment:
+Run the image build from the repository root. Images are published under the fixed `generaltao725` Docker Hub namespace:
 
 ```bash
-mvn -pl backend -am -P build-docker-image package -DskipTests -Ddocker.registry=your-registry; docker build -t your-registry/fullstack-starter-frontend:latest frontend
+mvn -pl backend -am -P build-docker-image package -DskipTests; docker build -t generaltao725/fullstack-starter-frontend:latest frontend
 ```
 
 ## Docker Compose
@@ -19,7 +19,6 @@ docker compose --env-file templates/docker/.env.test -f templates/docker/docker-
 For production, create an environment file with deployment-specific values:
 
 ```env
-DOCKER_REGISTRY=your-registry
 COMPOSE_PROJECT_NAME=fullstack-starter-prod
 
 POSTGRES_USER=dbadmin

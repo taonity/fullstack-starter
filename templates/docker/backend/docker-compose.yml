@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${DOCKER_REGISTRY:-local}/fullstack-starter-backend:latest
+    image: generaltao725/fullstack-starter-backend:latest
     environment:
       JDK_JAVA_OPTIONS: --add-opens java.base/java.lang=ALL-UNNAMED
       JAVA_TOOL_OPTIONS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005

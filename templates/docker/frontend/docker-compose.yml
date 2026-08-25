@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ${DOCKER_REGISTRY:-local}/fullstack-starter-frontend:latest
+    image: generaltao725/fullstack-starter-frontend:latest
     environment:
       FRONTEND_PROFILE: ${FRONTEND_PROFILE:?FRONTEND_PROFILE must be set}
       LOCAL_BACKEND_URL: http://backend:8080
