@@ -2,9 +2,8 @@ services:
   frontend:
     image: ${DOCKER_REGISTRY:-local}/fullstack-starter-frontend:latest
     environment:
+      FRONTEND_PROFILE: ${FRONTEND_PROFILE:?FRONTEND_PROFILE must be set}
       LOCAL_BACKEND_URL: http://backend:8080
-    env_file:
-      - ../${COMPOSE_ENV_FILE:-.env}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/actuator/health"]
       interval: 10s

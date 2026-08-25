@@ -19,29 +19,22 @@ docker compose --env-file templates/docker/.env.test -f templates/docker/docker-
 For production, create an environment file with deployment-specific values:
 
 ```env
-COMPOSE_PROJECT_NAME=fullstack-starter
-COMPOSE_ENV_FILE=.env
 DOCKER_REGISTRY=your-registry
-SPRING_PROFILES_ACTIVE=postgres,prod-google
-GOOGLE_CLIENT_ID=your-real-client-id
-GOOGLE_CLIENT_SECRET=your-real-secret
-APP_DEFAULT_SUCCESS_URL=https://app.example.com
-APP_LOGIN_URL=https://app.example.com/login
-SERVER_SERVLET_SESSION_COOKIE_DOMAIN=.example.com
-SERVER_SERVLET_SESSION_COOKIE_NAME=JSESSIONID
-CSRF_COOKIE_NAME=XSRF-TOKEN
+COMPOSE_PROJECT_NAME=fullstack-starter-prod
+
 POSTGRES_USER=dbadmin
 POSTGRES_PASSWORD=strong-password
-POSTGRES_DB=fullstack_starter_db
 POSTGRES_APP_USER=app
 POSTGRES_APP_PASSWORD=app-password
-POSTGRES_ADDRESS=db
-POSTGRES_PORT=5432
-LOCAL_BACKEND_URL=http://backend:8080
-PUBLIC_BACKEND_URL=https://api.example.com
+GOOGLE_CLIENT_ID=your-real-client-id
+GOOGLE_CLIENT_SECRET=your-real-secret
+SPRING_PROFILES_ACTIVE=prod
+FRONTEND_PROFILE=prod
 ```
 
-The required groups are Compose/image selection, one database and OAuth2 profile, OAuth credentials and redirects, shared session/CSRF cookie settings, PostgreSQL admin and application credentials, and internal/public backend URLs.
+The environment file contains Compose bootstrap selectors, credentials, and the backend/frontend profiles. Use `COMPOSE_PROJECT_NAME=fullstack-starter-stage`, `SPRING_PROFILES_ACTIVE=stage`, and `FRONTEND_PROFILE=stage` for staging. Public URLs, cookie names, database topology, and internal service addresses remain committed in application profiles and Compose configuration.
+
+The file is passed with Compose's `--env-file` option for interpolation. Services receive only their explicitly listed variables, so database and OAuth credentials are not injected into the frontend container.
 
 The production override [`docker-compose.prodenv.yml`](../templates/docker/docker-compose.prodenv.yml) attaches backend and frontend to the external `prodenv-shared-internal` network. That network must already exist in the target production environment.
 
