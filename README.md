@@ -56,7 +56,7 @@ The backend runs on `http://127.0.0.1:8080`; the frontend runs on `http://127.0.
 Build the backend container image from the repository root:
 
 ```bash
-mvn -pl backend -am -P build-docker-image package -DskipTests -Ddocker.registry=generaltao725
+mvn clean install -P build-docker-image -DskipTests '-Ddocker.registry=generaltao725'
 ```
 
 Build the frontend container image from the repository root:
