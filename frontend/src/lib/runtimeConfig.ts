@@ -1,4 +1,7 @@
+import { isFrontendProfile, type FrontendProfile } from '@/config/environmentProfiles'
+
 export interface RuntimeConfig {
+  profile: FrontendProfile
   csrfCookieName: string
   publicBackendUrl: string
 }
@@ -10,6 +13,9 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     throw new Error('Invalid runtime configuration response')
   }
   const config = value as Record<string, unknown>
+  if (typeof config.profile !== 'string' || !isFrontendProfile(config.profile)) {
+    throw new Error('Runtime configuration has an invalid profile')
+  }
   if (typeof config.csrfCookieName !== 'string' || !config.csrfCookieName) {
     throw new Error('Runtime configuration is missing csrfCookieName')
   }
@@ -17,6 +23,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     throw new Error('Runtime configuration is missing publicBackendUrl')
   }
   return {
+    profile: config.profile,
     csrfCookieName: config.csrfCookieName,
     publicBackendUrl: config.publicBackendUrl,
   }

@@ -15,7 +15,3 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://openidconnect.googleapis.com/v1/userinfo
             jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
-
-app:
-  default-success-url: ${APP_DEFAULT_SUCCESS_URL}
-  login-url: ${APP_LOGIN_URL}

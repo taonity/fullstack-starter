@@ -39,7 +39,6 @@ app:
   csrf-cookie-name: XSRF-TOKEN-LOCAL
   cookie:
     secure: false
-    same-site: Lax
 
 decorator:
   datasource:

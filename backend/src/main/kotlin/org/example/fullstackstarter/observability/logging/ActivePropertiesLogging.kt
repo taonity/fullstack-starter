@@ -22,7 +22,7 @@ class ActivePropertiesLogging(
     override fun run(vararg args: String) {
         val rendered = collectProperties().entries
             .joinToString(separator = "\n") { (key, value) -> "  $key = $value" }
-        LOGGER.info { "Active application properties and environment variables (secrets masked):\n$rendered" }
+        LOGGER.debug { "Active application properties and environment variables (secrets masked):\n$rendered" }
     }
 
     private fun collectProperties(): Map<String, String> {

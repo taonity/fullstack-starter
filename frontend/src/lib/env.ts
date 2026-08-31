@@ -1,4 +1,11 @@
+import {
+  FRONTEND_PROFILE_CONFIG,
+  isFrontendProfile,
+  type FrontendProfile,
+} from '@/config/environmentProfiles'
+
 export interface ServerEnv {
+  profile: FrontendProfile
   localBackendUrl: string
   publicBackendUrl: string
   csrfCookieName: string
@@ -12,23 +19,21 @@ function required(name: string): string {
   return value
 }
 
-function absoluteUrl(name: string): string {
-  const value = required(name)
-  try {
-    const url = new URL(value)
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      throw new Error()
-    }
-    return value.replace(/\/$/, '')
-  } catch {
-    throw new Error(`${name} must be an absolute HTTP(S) URL`)
+function frontendProfile(): FrontendProfile {
+  const profile = required('FRONTEND_PROFILE')
+  if (!isFrontendProfile(profile)) {
+    throw new Error(`FRONTEND_PROFILE must be one of: local, stage, prod`)
   }
+  return profile
 }
 
 export function getServerEnv(): ServerEnv {
+  const profile = frontendProfile()
+  const config = FRONTEND_PROFILE_CONFIG[profile]
+
   return {
-    localBackendUrl: absoluteUrl('LOCAL_BACKEND_URL'),
-    publicBackendUrl: absoluteUrl('PUBLIC_BACKEND_URL'),
-    csrfCookieName: required('CSRF_COOKIE_NAME'),
+    profile,
+    ...config,
+    localBackendUrl: process.env.LOCAL_BACKEND_URL?.trim() || config.localBackendUrl,
   }
 }

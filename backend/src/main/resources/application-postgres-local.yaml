@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fullstack_starter_db
+    username: d
+    password: d
+  flyway:
+    enabled: false
+

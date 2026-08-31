@@ -7,31 +7,37 @@ afterEach(() => {
 })
 
 describe('server environment', () => {
-  it('returns validated configuration', () => {
-    vi.stubEnv('LOCAL_BACKEND_URL', 'http://backend:8080/')
-    vi.stubEnv('PUBLIC_BACKEND_URL', 'https://api.example.com/')
-    vi.stubEnv('CSRF_COOKIE_NAME', 'XSRF-TOKEN')
+  it.each([
+    ['local', 'http://127.0.0.1:8080', 'XSRF-TOKEN-LOCAL'],
+    ['stage', 'https://fullstack-starter-api-stage.taonity.org', 'XSRF-TOKEN-FULLSTACK-STARTER-STAGE'],
+    ['prod', 'https://fullstack-starter-api.taonity.org', 'XSRF-TOKEN-FULLSTACK-STARTER-PROD'],
+  ])('returns the %s profile configuration', (profile, backendUrl, csrfCookieName) => {
+    vi.stubEnv('FRONTEND_PROFILE', profile)
 
     expect(getServerEnv()).toEqual({
-      localBackendUrl: 'http://backend:8080',
-      publicBackendUrl: 'https://api.example.com',
-      csrfCookieName: 'XSRF-TOKEN',
+      profile,
+      localBackendUrl: backendUrl,
+      publicBackendUrl: backendUrl,
+      csrfCookieName,
     })
   })
 
-  it('rejects a missing required value', () => {
-    vi.stubEnv('LOCAL_BACKEND_URL', '')
-    vi.stubEnv('PUBLIC_BACKEND_URL', 'https://api.example.com')
-    vi.stubEnv('CSRF_COOKIE_NAME', 'XSRF-TOKEN')
+  it('rejects a missing profile', () => {
+    vi.stubEnv('FRONTEND_PROFILE', '')
 
-    expect(() => getServerEnv()).toThrow('Missing required environment variable: LOCAL_BACKEND_URL')
+    expect(() => getServerEnv()).toThrow('Missing required environment variable: FRONTEND_PROFILE')
   })
 
-  it('rejects a non-HTTP backend URL', () => {
-    vi.stubEnv('LOCAL_BACKEND_URL', 'backend:8080')
-    vi.stubEnv('PUBLIC_BACKEND_URL', 'https://api.example.com')
-    vi.stubEnv('CSRF_COOKIE_NAME', 'XSRF-TOKEN')
+  it('rejects an unknown profile', () => {
+    vi.stubEnv('FRONTEND_PROFILE', 'qa')
 
-    expect(() => getServerEnv()).toThrow('LOCAL_BACKEND_URL must be an absolute HTTP(S) URL')
+    expect(() => getServerEnv()).toThrow('FRONTEND_PROFILE must be one of: local, stage, prod')
+  })
+
+  it('uses the backend URL supplied by the runtime topology', () => {
+    vi.stubEnv('FRONTEND_PROFILE', 'local')
+    vi.stubEnv('LOCAL_BACKEND_URL', 'http://backend:8080')
+
+    expect(getServerEnv().localBackendUrl).toBe('http://backend:8080')
   })
 })

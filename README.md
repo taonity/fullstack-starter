@@ -25,9 +25,9 @@ Choose one profile from each resource group.
 | Database | `h2` | `postgres` |
 | OAuth2 | `stub-google` | `prod-google` |
 | Logging | `plain-log` (included by `local`) | default |
-| General | `local` | none |
+| Environment | `local` | `stage` or `prod` |
 
-Local development uses `h2,stub-google,local`; production uses `postgres,prod-google`. Add the optional `demo-data` profile to seed local feature fixtures.
+Local development uses `h2,stub-google,local`. Stage and production use only `stage` or `prod`; each environment profile includes `postgres` and `prod-google` and owns its non-secret deployment settings. Add the optional `demo-data` profile to seed local feature fixtures.
 
 ## Run locally
 
@@ -52,6 +52,18 @@ npm install --prefix frontend; npm run dev --prefix frontend
 ```
 
 The backend runs on `http://127.0.0.1:8080`; the frontend runs on `http://127.0.0.1:3000`.
+
+Build the backend container image from the repository root:
+
+```bash
+mvn clean install -P build-docker-image -DskipTests
+```
+
+Build the frontend container image from the repository root:
+
+```bash
+docker build -t generaltao725/fullstack-starter-frontend:latest frontend
+```
 
 For the complete local stack with published images:
 
