@@ -22,12 +22,12 @@ describe('app info', () => {
     expect(deploymentTime(data)).toBe(buildTime)
   })
 
-  it('selects the same fields from frontend info and ignores diagnostics', () => {
+  it('selects release fields and formats process uptime from frontend info', () => {
     const data: InfoObject = {
       app: { name: 'fullstack-starter-frontend', version: '0.1.0' },
       git: { commit, branch: 'main' },
       build: { time: buildTime, nodeVersion: 'v26.7.0' },
-      runtime: { env: 'development', uptime: 1234 },
+      runtime: { env: 'development', uptime: 183845 },
     }
 
     expect(infoRows(data).map(({ key }) => key)).toEqual([
@@ -35,7 +35,13 @@ describe('app info', () => {
       'revision',
       'branch',
       'built',
+      'uptime',
     ])
+    expect(infoRows(data).at(-1)).toEqual({
+      key: 'uptime',
+      label: 'Uptime',
+      value: '2d 3h 4m 5s',
+    })
   })
 
   it('omits missing and unknown fields', () => {

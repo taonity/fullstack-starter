@@ -120,6 +120,7 @@ const INFO_FIELDS = [
   },
   { key: 'branch', label: 'Branch', paths: ['git.branch'] },
   { key: 'built', label: 'Built', paths: ['build.time'] },
+  { key: 'uptime', label: 'Uptime', paths: ['runtime.uptime'] },
 ] as const
 
 /** Selects and labels the release metadata useful to people viewing the About panel. */
@@ -142,6 +143,11 @@ export function infoRows(data: InfoObject | null): InfoRow[] {
       })
     } else if (key === 'built') {
       rows.push({ key, label, value: formatBuildTime(value) })
+    } else if (key === 'uptime') {
+      const formattedUptime = formatUptime(value)
+      if (formattedUptime) {
+        rows.push({ key, label, value: formattedUptime })
+      }
     } else {
       rows.push({ key, label, value })
     }
@@ -155,6 +161,30 @@ function formatBuildTime(value: string): string {
     return value
   }
   return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC')
+}
+
+function formatUptime(value: string): string | null {
+  const totalSeconds = Math.floor(Number(value))
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) {
+    return null
+  }
+
+  const units = [
+    ['d', 86_400],
+    ['h', 3_600],
+    ['m', 60],
+    ['s', 1],
+  ] as const
+  let remaining = totalSeconds
+  const parts: string[] = []
+  for (const [suffix, seconds] of units) {
+    const amount = Math.floor(remaining / seconds)
+    if (amount > 0 || (suffix === 's' && parts.length === 0)) {
+      parts.push(`${amount}${suffix}`)
+    }
+    remaining %= seconds
+  }
+  return parts.join(' ')
 }
 
 function valueAtPath(data: InfoObject, path: string): string | null {

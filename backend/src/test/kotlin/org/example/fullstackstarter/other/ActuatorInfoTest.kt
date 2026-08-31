@@ -27,8 +27,8 @@ class ActuatorInfoTest {
             .andExpect(jsonPath("$.git.branch").isString)
             .andExpect(jsonPath("$.git.commit").isString)
             .andExpect(jsonPath("$.build.time").isString)
+            .andExpect(jsonPath("$.runtime.uptime").isNumber)
             .andExpect(jsonPath("$.build.group").doesNotExist())
             .andExpect(jsonPath("$.build.artifact").doesNotExist())
-            .andExpect(jsonPath("$.runtime").doesNotExist())
     }
 }

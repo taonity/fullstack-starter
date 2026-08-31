@@ -1,5 +1,6 @@
 package org.example.fullstackstarter.common.actuator
 
+import java.lang.management.ManagementFactory
 import org.springframework.boot.actuate.info.Info
 import org.springframework.boot.actuate.info.InfoContributor
 import org.springframework.boot.info.BuildProperties
@@ -29,5 +30,6 @@ class ApplicationInfoContributor(
                 )
             )
             .withDetail("build", mapOf("time" to buildProperties.time))
+            .withDetail("runtime", mapOf("uptime" to ManagementFactory.getRuntimeMXBean().uptime / 1000.0))
     }
 }
