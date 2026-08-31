@@ -10,6 +10,9 @@ export interface BuildInfo {
   build: {
     time: string
   }
+  runtime: {
+    uptime: number
+  }
 }
 
 export function getBuildInfo(): BuildInfo {
@@ -24,6 +27,9 @@ export function getBuildInfo(): BuildInfo {
     },
     build: {
       time: process.env.BUILD_TIME || 'unknown',
+    },
+    runtime: {
+      uptime: process.uptime(),
     },
   }
 }

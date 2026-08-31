@@ -7,7 +7,7 @@ describe('frontend build info', () => {
     vi.unstubAllEnvs()
   })
 
-  it('returns stable release identity without process diagnostics', () => {
+  it('returns release identity and process uptime', () => {
     vi.stubEnv('APP_VERSION', '0.1.0')
     vi.stubEnv('GIT_COMMIT_SHA', '2b5a2c2261e22ce18378a66a14a82218040f857b')
     vi.stubEnv('GIT_BRANCH', 'main')
@@ -24,6 +24,9 @@ describe('frontend build info', () => {
       },
       build: {
         time: '2026-08-21T10:59:25.345Z',
+      },
+      runtime: {
+        uptime: expect.any(Number),
       },
     })
   })

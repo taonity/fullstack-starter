@@ -27,7 +27,7 @@ interface AppInfoPanelProps {
  * height on the next mount and the layout does not jump. Seeded with the typical field counts
  * so even the very first load is close to the final size.
  */
-const rowCountCache: Record<string, number> = { Backend: 4, Frontend: 4 }
+const rowCountCache: Record<string, number> = { Backend: 5, Frontend: 5 }
 
 const LABELS = ['Backend', 'Frontend'] as const
 
