@@ -1,9 +1,9 @@
 ---
 logging:
   level:
-#    org.example.fullstackstarter.observability.logging.HttpServletLoggingService: debug
-    org.example.fullstackstarter.web.exception.GlobalExceptionHandler: debug
-#    org.example.fullstackstarter: debug
+#    org.taonity.fullstackstarter.observability.logging.HttpServletLoggingService: debug
+    org.taonity.fullstackstarter.web.exception.GlobalExceptionHandler: debug
+#    org.taonity.fullstackstarter: debug
     DB: info
     # org.springframework.security: TRACE
 #    root: trace

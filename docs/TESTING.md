@@ -58,9 +58,9 @@ npm run test:watch --prefix frontend
 Complete authenticated-controller pattern:
 
 ```kotlin
-package org.example.fullstackstarter.example
+package org.taonity.fullstackstarter.example
 
-import org.example.fullstackstarter.other.ControllerTestsBaseClass
+import org.taonity.fullstackstarter.other.ControllerTestsBaseClass
 import org.junit.jupiter.api.Test
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath

@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>org.example</groupId>
+    <groupId>org.taonity</groupId>
     <artifactId>fullstack-starter</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
