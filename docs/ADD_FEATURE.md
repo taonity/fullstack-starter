@@ -24,6 +24,7 @@ Use this checklist to add one vertical feature without bypassing existing bounda
    Preserve backend response status, headers, and body.
 10. Build the UI inside the relevant feature directory.
    [`frontend/src/features/console`](../frontend/src/features/console/) shows the current feature organization.
+   For paginated data tables, use [`DataTab`](../frontend/src/features/console/DataTab.tsx) and provide every column with a backend `sortKey` and `defaultWidth`. The shared table contract includes resizable persisted widths, overflow-only full-text previews, sortable headers, column visibility controls, and silent refreshes; do not reimplement or omit these behaviors.
 11. Add focused backend tests for authorization, validation, service behavior, persistence, error mapping, and demo-data idempotency as applicable.
    Add frontend tests for proxy and UI behavior.
 12. Follow [Testing](TESTING.md) for current commands and test patterns.

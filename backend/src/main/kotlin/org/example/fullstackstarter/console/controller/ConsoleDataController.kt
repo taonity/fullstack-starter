@@ -20,7 +20,9 @@ class ConsoleDataController(
         @AuthenticationPrincipal principal: GoogleUserPrincipal,
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) field: String?,
+        @RequestParam(defaultValue = "occurredAt") sort: String,
+        @RequestParam(defaultValue = "desc") direction: String,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int,
-    ): PageResponse<AuditLogDto> = consoleDataService.listAuditLogs(principal, q, field, page, size)
+    ): PageResponse<AuditLogDto> = consoleDataService.listAuditLogs(principal, q, field, sort, direction, page, size)
 }

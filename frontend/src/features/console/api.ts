@@ -90,8 +90,16 @@ export const consoleApi = {
   changeUserRole: (googleId: string, role: ConsoleRole) =>
     mutate<UserSummary>(`/users/${encodeURIComponent(googleId)}/role`, 'PUT', { role }),
 
-  listAuditLogs: (page: number, size: number, q?: string, field?: string) =>
-    get<PageResponse<AuditLog>>(buildListQuery('/audit-logs', page, size, q, field)),
+  listAuditLogs: (
+    page: number,
+    size: number,
+    q?: string,
+    field?: string,
+    sort?: string,
+    direction?: string,
+  ) => get<PageResponse<AuditLog>>(
+    buildListQuery('/audit-logs', page, size, q, field, sort, direction),
+  ),
 
   getConfig: () => get<ConfigSchema>('/config'),
 
@@ -108,6 +116,7 @@ function buildListQuery(
   size: number,
   q?: string,
   field?: string,
+  sort?: string,
   direction?: string,
 ): string {
   const params = new URLSearchParams({ page: String(page), size: String(size) })
@@ -119,6 +128,9 @@ function buildListQuery(
   }
   if (direction) {
     params.set('direction', direction)
+  }
+  if (sort) {
+    params.set('sort', sort)
   }
   return `${path}?${params.toString()}`
 }

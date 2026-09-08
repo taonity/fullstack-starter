@@ -57,6 +57,7 @@ Local set: `h2,stub-google,local` (`local` auto-includes `plain-log`). Add `demo
 - **Controller pattern**: `@RestController`, inject services, use `@AuthenticationPrincipal principal: GoogleUserPrincipal` for auth. `ControllerLoggingInterceptor` automatically logs every controller method invocation.
 - **CSRF**: SPA pattern with `CookieCsrfTokenRepository` + `SpaCsrfTokenRequestHandler`. Frontend reads CSRF cookie and sends `X-XSRF-TOKEN` header on mutating requests.
 - **Frontend API proxy**: every backend call is proxied through Next.js API routes in `src/app/api/`. Never call the backend directly from client components.
+- **Data tables**: use `frontend/src/features/console/DataTab.tsx` for paginated tables. Every column must define `sortKey` and `defaultWidth`, and each table must define `columnWidthsKey` and `defaultSortKey`; resizing, overflow previews, sortable headers, column visibility, and silent refresh are mandatory shared behaviors.
 - __DB migrations__: Flyway SQL scripts in `templates/docker/flyway/sql/tables/` (naming: `V100000__description.sql`). H2 profile uses Flyway with `filesystem:` locations.
 - **Demo data**: when a persistent feature benefits from local examples, add an idempotent `DemoDataContributor` in that feature package under `@Profile("demo-data")`. Use deterministic markers, never overwrite existing records, and extend `DemoDataProfileTest`.
 

@@ -29,38 +29,51 @@ const AUDIT_COLUMNS: Column<AuditLog>[] = [
   {
     key: 'occurredAt',
     label: 'When',
+    sortKey: 'occurredAt',
+    initialSortDirection: 'desc',
     value: (a) => a.occurredAt,
     render: (a) => formatTime(a.occurredAt),
     cellClassName: 'whitespace-nowrap text-muted-foreground tabular-nums',
-    headClassName: 'w-[170px]',
+    defaultWidth: 180,
     skeleton: 'w-[85%]',
   },
   {
     key: 'action',
     label: 'Action',
+    sortKey: 'action',
     value: (a) => a.action,
     cellClassName: 'truncate font-medium',
-    headClassName: 'w-[22%]',
+    defaultWidth: 180,
     searchKey: 'action',
   },
   {
     key: 'targetType',
     label: 'Target',
+    sortKey: 'targetType',
     value: (a) => a.targetType,
     cellClassName: 'truncate',
-    headClassName: 'w-[16%]',
+    defaultWidth: 140,
     searchKey: 'targetType',
   },
   {
     key: 'targetId',
     label: 'Record id',
+    sortKey: 'targetId',
     value: (a) => a.targetId ?? '',
     render: (a) => <span className="font-mono text-xs">{a.targetId ?? '—'}</span>,
     cellClassName: 'truncate',
-    headClassName: 'w-[28%]',
+    defaultWidth: 230,
     searchKey: 'targetId',
   },
-  { key: 'actorEmail', label: 'Actor', value: (a) => a.actorEmail, cellClassName: 'truncate', searchKey: 'actorEmail' },
+  {
+    key: 'actorEmail',
+    label: 'Actor',
+    sortKey: 'actorEmail',
+    value: (a) => a.actorEmail,
+    cellClassName: 'truncate',
+    defaultWidth: 210,
+    searchKey: 'actorEmail',
+  },
 ]
 
 export function AdminPanel({
@@ -230,8 +243,13 @@ export function AdminPanel({
         <CardContent>
           <DataTab<AuditLog>
             columns={AUDIT_COLUMNS}
+            columnWidthsKey="audit-log"
+            defaultSortKey="occurredAt"
+            defaultSortDirection="desc"
             rowKey={(a) => a.id}
-            load={(page, size, q, field) => consoleApi.listAuditLogs(page, size, q, field)}
+            load={(page, size, q, field, sort, direction) =>
+              consoleApi.listAuditLogs(page, size, q, field, sort, direction)
+            }
             emptyLabel="No audit entries."
             forceLoading={forceLoading}
             onError={onError}
