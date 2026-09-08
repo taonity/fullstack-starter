@@ -23,17 +23,17 @@
       "prTitleStrict": true
     },
     {
-      "matchManagers": ["maven"],
+      "matchManagers": ["gradle"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "[Maven] minor and patch",
-      "groupSlug": "maven-minor-patch",
+      "groupName": "[Gradle] minor and patch",
+      "groupSlug": "gradle-minor-patch",
       "prTitleStrict": true
     },
     {
-      "matchManagers": ["maven"],
+      "matchManagers": ["gradle"],
       "matchUpdateTypes": ["major"],
-      "groupName": "[Maven] major",
-      "groupSlug": "maven-major",
+      "groupName": "[Gradle] major",
+      "groupSlug": "gradle-major",
       "prTitleStrict": true
     },
     {
@@ -57,8 +57,8 @@
       "prTitleStrict": true
     },
     {
-      "packageNames": ["com.google.cloud.tools:jib-maven-plugin"],
-      "allowedVersions": "3.4.2"
+      "packageNames": ["com.google.cloud.tools.jib"],
+      "allowedVersions": "3.5.4"
     },
     {
       "packageNames": ["postgres"],

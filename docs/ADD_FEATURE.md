@@ -34,5 +34,5 @@ Use this checklist to add one vertical feature without bypassing existing bounda
 Run only the checks relevant to the changed slice, then run the full module checks from the repository root before merging.
 
 ```bash
-mvn -pl backend test; npm test --prefix frontend; npm run lint --prefix frontend
+./gradlew :backend:test; npm test --prefix frontend; npm run lint --prefix frontend
 ```

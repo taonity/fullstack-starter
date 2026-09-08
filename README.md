@@ -12,7 +12,6 @@ A template for building full-stack web applications with Google OAuth2 authentic
 ## Prerequisites
 
 - Java 17
-- Maven
 - Node.js 24 and npm
 - Docker and Docker Compose (optional)
 
@@ -36,13 +35,13 @@ Run each command from the repository root.
 Start the backend:
 
 ```bash
-mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
+./gradlew :backend:bootRun --args='--spring.profiles.active=h2,stub-google,local'
 ```
 
 Start the backend with pending access requests and audit records:
 
 ```bash
-mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local,demo-data"'
+./gradlew :backend:bootRun --args='--spring.profiles.active=h2,stub-google,local,demo-data'
 ```
 
 Start the frontend in another terminal:
@@ -56,7 +55,7 @@ The backend runs on `http://127.0.0.1:8080`; the frontend runs on `http://127.0.
 Build the backend container image from the repository root:
 
 ```bash
-mvn clean install -P build-docker-image -DskipTests
+./gradlew clean :backend:jibDockerBuild
 ```
 
 Build the frontend container image from the repository root:

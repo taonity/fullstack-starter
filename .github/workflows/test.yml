@@ -41,11 +41,11 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: maven
+        cache: gradle
 
     - name: Build frontend Docker image
       run: docker build -t ${{ secrets.DOCKER_USERNAME }}/fullstack-starter-frontend frontend/
 
     - name: Build backend Docker image and run smoke tests
-      run: mvn -B -P build-docker-image,smoke-tests verify
+      run: bash ./gradlew --no-daemon :backend:jibDockerBuild :backend:smokeTest
 

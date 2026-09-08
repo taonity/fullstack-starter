@@ -1,7 +1,7 @@
 target/
-!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+.gradle/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
@@ -46,7 +46,6 @@ node_modules
 Thumbs.db
 
 .env
-.git-versioned-pom.xml
 .idea
 
 ### Frontend ###

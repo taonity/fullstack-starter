@@ -4,34 +4,34 @@
 
 Run each command from the repository root.
 
-All reactor tests:
+All backend tests:
 
 ```bash
-mvn test
+./gradlew test
 ```
 
 Backend only:
 
 ```bash
-mvn -pl backend test
+./gradlew :backend:test
 ```
 
 Single backend test:
 
 ```bash
-mvn -pl backend test -Dtest=LazyFetchingArchitectureTest
+./gradlew :backend:test --tests '*LazyFetchingArchitectureTest'
 ```
 
 Demo-data profile and idempotency:
 
 ```bash
-mvn -B -pl backend -am test '-Dtest=DemoDataProfileTest' '-Dsurefire.failIfNoSpecifiedTests=false'
+./gradlew :backend:test --tests '*DemoDataProfileTest'
 ```
 
 Smoke tests require Docker and both application images. The command below matches the registry in `templates/docker/.env.test`:
 
 ```bash
-docker build -t generaltao725/fullstack-starter-frontend:latest frontend; mvn -B -P build-docker-image,smoke-tests verify
+docker build -t generaltao725/fullstack-starter-frontend:latest frontend; ./gradlew :backend:jibDockerBuild :backend:smokeTest
 ```
 
 Frontend tests once:
@@ -50,10 +50,10 @@ npm run test:watch --prefix frontend
 
 - Use `@SpringBootTest`, `@AutoConfigureMockMvc`, and the `h2` profile for MVC integration tests.
 - Cover anonymous rejection and authenticated behavior for protected controllers.
-- Use the OAuth2 stub flow when persistence or session behavior matters; [`ControllerTestsBaseClass`](../backend/src/test/kotlin/org/example/fullstackstarter/other/ControllerTestsBaseClass.kt) provides that pattern.
+- Use the OAuth2 stub flow when persistence or session behavior matters; [`ControllerTestsBaseClass`](../backend/src/test/kotlin/org/taonity/fullstackstarter/other/ControllerTestsBaseClass.kt) provides that pattern.
 - Add repository tests for custom queries, constraints, mappings, and transaction-sensitive behavior rather than framework-provided CRUD.
-- Keep architecture rules focused; [`LazyFetchingArchitectureTest`](../backend/src/test/kotlin/org/example/fullstackstarter/other/LazyFetchingArchitectureTest.kt) is the current example.
-- [`SmokeIT`](../backend/src/test/kotlin/org/example/fullstackstarter/automation/SmokeIT.kt) owns the opt-in Compose readiness check.
+- Keep architecture rules focused; [`LazyFetchingArchitectureTest`](../backend/src/test/kotlin/org/taonity/fullstackstarter/other/LazyFetchingArchitectureTest.kt) is the current example.
+- [`SmokeIT`](../backend/src/test/kotlin/org/taonity/fullstackstarter/automation/SmokeIT.kt) owns the opt-in Compose readiness check.
 
 Complete authenticated-controller pattern:
 

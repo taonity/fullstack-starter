@@ -2,11 +2,13 @@
 
 ## Build images
 
-Run the image build from the repository root. Images are published under the fixed `generaltao725` Docker Hub namespace:
+Run the image build from the repository root. Images use the `generaltao725` Docker Hub namespace by default:
 
 ```bash
-mvn -pl backend -am -P build-docker-image package -DskipTests; docker build -t generaltao725/fullstack-starter-frontend:latest frontend
+./gradlew :backend:jibDockerBuild; docker build -t generaltao725/fullstack-starter-frontend:latest frontend
 ```
+
+Override the backend Docker Hub namespace with `-PdockerRegistry=<namespace>`.
 
 ## Docker Compose
 

@@ -14,10 +14,10 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: maven
+        cache: gradle
 
     - name: Build back-end
-      run: mvn -B -pl backend -am package -DskipTests
+      run: bash ./gradlew --no-daemon :backend:assemble
 
   tests:
     needs: build
@@ -30,7 +30,7 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: maven
+        cache: gradle
 
     - name: Run unit and integration tests
-      run: mvn -B verify
+      run: bash ./gradlew --no-daemon test

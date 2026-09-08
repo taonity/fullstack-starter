@@ -10,7 +10,7 @@ Use this checklist to add a typed, configurable integration without embedding en
 4. Put remote calls behind a feature integration service. Keep remote DTOs separate from application DTOs and translate at the boundary.
 5. Map timeout, connectivity, authentication, rate-limit, and invalid-response failures to deliberate application exceptions. Add HTTP mappings through [`GlobalExceptionHandler`](../backend/src/main/kotlin/org/example/fullstackstarter/web/exception/GlobalExceptionHandler.kt) only when they cross a controller boundary.
 6. Add a health indicator only when the dependency is required for readiness. [`GoogleHealthIndicator`](../backend/src/main/kotlin/org/example/fullstackstarter/health/GoogleHealthIndicator.kt) is the current minimal `RestClient` example, not a canonical full integration.
-7. For local deterministic behavior, model a stub module on [`google-stubs/pom.xml`](../google-stubs/pom.xml) and its [WireMock resources](../google-stubs/src/main/resources/wiremock/google/). Register the module and a dedicated stub profile.
+7. For local deterministic behavior, model a stub module on [`google-stubs/build.gradle.kts`](../google-stubs/build.gradle.kts) and its [WireMock resources](../google-stubs/src/main/resources/wiremock/google/). Register the module and a dedicated stub profile.
 8. Supply real production values through the deployment environment; never commit credentials.
 9. Test configuration binding, request construction, success mapping, each supported failure class, and stub-profile startup. Add health tests only when a health indicator exists.
 

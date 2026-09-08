@@ -2,7 +2,7 @@
 
 ## Architecture
 
-Multi-module Maven monorepo (Spring Boot 4 / Kotlin backend + Next.js TypeScript frontend).
+Multi-project Gradle monorepo (Spring Boot 4 / Kotlin backend + Next.js TypeScript frontend).
 
 - **`backend/`** — Main backend. Kotlin, Spring Boot 4, JPA/Hibernate, Spring Security OAuth2 (Google login). Package-per-feature layout under `org.taonity.fullstackstarter`: `common/`, `config/`, `console/`, `security/`, `user/`, and supporting infrastructure packages.
 - **`google-stubs/`** — WireMock stubs for Google OAuth2 (resources under `src/main/resources/wiremock/google/`). Used by the `stub-google` profile for local development without real Google credentials.
@@ -22,13 +22,13 @@ Run each command from the repository root.
 Full build:
 
 ```bash
-mvn clean install
+./gradlew clean build
 ```
 
 Run backend locally:
 
 ```bash
-mvn -pl backend spring-boot:run '-Dspring-boot.run.jvmArguments="-Dspring.profiles.active=h2,stub-google,local"'
+./gradlew :backend:bootRun --args='--spring.profiles.active=h2,stub-google,local'
 ```
 
 Run frontend:
@@ -66,7 +66,7 @@ Local set: `h2,stub-google,local` (`local` auto-includes `plain-log`). Add `demo
 - **MVC integration tests**: use `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("h2")` with `oauth2Login()` mock.
 - **Authenticated browser checks**: protected frontend functionality requires a session. If Playwright or another browser tool lands on `/login` or receives `401`, open **Developer tools** using the bottom-right bug button (or `Alt+Shift+D`), choose **Owner (test@example.com)**, wait for the redirect to `/`, and only then inspect the protected UI. Reuse that authenticated browser page for subsequent checks.
 - Do not report `/login`, missing protected elements, or pre-login `401` responses as application failures until the dev Owner shortcut has been used.
-- Run tests from the repository root with `mvn test`.
+- Run tests from the repository root with `./gradlew test`.
 
 ## Adding Features
 
