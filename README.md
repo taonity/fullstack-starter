@@ -81,3 +81,13 @@ See [Deployment](docs/DEPLOYMENT.md) for production configuration and Compose re
 - [Database and migrations](docs/DATABASE.md)
 - [Testing](docs/TESTING.md)
 - [Deployment](docs/DEPLOYMENT.md)
+
+### PostgreSQL database ERD diagram
+
+<!-- mermerd-start -->
+
+```mermaid
+erDiagram
+```
+
+<!-- mermerd-end -->
