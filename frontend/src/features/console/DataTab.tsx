@@ -62,6 +62,7 @@ type DataTabProps<T> = {
   sortLabel?: string
   forceLoading?: boolean
   onError: (message: string) => void
+  refreshKey?: number
 }
 
 const PAGE_SIZES = [20, 50, 100]
@@ -92,6 +93,7 @@ export function DataTab<T>({
   sortLabel = 'time',
   forceLoading = false,
   onError,
+  refreshKey = 0,
 }: DataTabProps<T>) {
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(DEFAULT_PAGE_SIZE)
@@ -107,6 +109,7 @@ export function DataTab<T>({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastRefreshKey = useRef(refreshKey)
 
   const reload = useCallback(
     async (
@@ -147,6 +150,12 @@ export function DataTab<T>({
     didInitialLoad.current = true
     void reload(0, DEFAULT_PAGE_SIZE, '', 'all', 'desc')
   }, [forceLoading, reload])
+
+  useEffect(() => {
+    if (forceLoading || !didInitialLoad.current || lastRefreshKey.current === refreshKey) return
+    lastRefreshKey.current = refreshKey
+    void reload(page, size, activeQuery, field, direction, { silent: true })
+  }, [activeQuery, direction, field, forceLoading, page, refreshKey, reload, size])
 
   useEffect(
     () => () => {

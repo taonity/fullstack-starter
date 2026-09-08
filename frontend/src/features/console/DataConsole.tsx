@@ -62,22 +62,25 @@ export default function DataConsole({
   const [tabRestored, setTabRestored] = useState(false)
   const [tabAnimationsReady, setTabAnimationsReady] = useState(false)
   const [pendingCount, setPendingCount] = useState<number | null>(null)
-  // Tabs are mounted lazily on first visit and then kept mounted (see keepMounted below), so
-  // switching back to an already-seen tab restores its state instantly instead of replaying the
-  // skeleton load. Trade-off: a revisited tab shows data from its first load until the user hits
-  // Refresh.
   const [visited, setVisited] = useState<Set<TabKey>>(() => new Set<TabKey>(['about']))
+  const [refreshKeys, setRefreshKeys] = useState<Record<TabKey, number>>({
+    about: 0,
+    config: 0,
+    admin: 0,
+  })
 
   const selectTab = useCallback((next: TabKey) => {
+    if (next === tab) return
     setTab(next)
     localStorage.setItem(TAB_STORAGE_KEY, next)
+    setRefreshKeys((prev) => ({ ...prev, [next]: prev[next] + 1 }))
     setVisited((prev) => {
       if (prev.has(next)) return prev
       const updated = new Set(prev)
       updated.add(next)
       return updated
     })
-  }, [])
+  }, [tab])
 
   const loadAccess = useCallback(async () => {
     try {
@@ -225,7 +228,9 @@ export default function DataConsole({
         </div>
 
         <TabsContent value="about" className="pt-2" keepMounted>
-          {visited.has('about') && <AppInfoPanel forceLoading={forceLoading} />}
+          {visited.has('about') && (
+            <AppInfoPanel forceLoading={forceLoading} refreshKey={refreshKeys.about} />
+          )}
         </TabsContent>
 
         <TabsContent value="config" className="pt-2" keepMounted>
@@ -234,6 +239,7 @@ export default function DataConsole({
               canEdit={access?.isOwner === true}
               forceLoading={isLoading || !canView}
               onError={setError}
+              refreshKey={refreshKeys.config}
             />
           )}
         </TabsContent>
@@ -246,6 +252,7 @@ export default function DataConsole({
                 forceLoading={isLoading || !access?.isAdmin}
                 onError={setError}
                 onPendingCountChange={setPendingCount}
+                refreshKey={refreshKeys.admin}
               />
             )}
           </TabsContent>

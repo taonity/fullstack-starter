@@ -68,11 +68,13 @@ export function AdminPanel({
   forceLoading = false,
   onError,
   onPendingCountChange,
+  refreshKey = 0,
 }: {
   access: AccessInfo
   forceLoading?: boolean
   onError: (message: string) => void
   onPendingCountChange?: (count: number) => void
+  refreshKey?: number
 }) {
   const [requests, setRequests] = useState<PendingRequest[] | null>(null)
   const [grantRoles, setGrantRoles] = useState<Record<string, ConsoleRole>>({})
@@ -96,7 +98,7 @@ export function AdminPanel({
   useEffect(() => {
     if (forceLoading) return
     void loadRequests()
-  }, [forceLoading, loadRequests])
+  }, [forceLoading, loadRequests, refreshKey])
 
   const visibleRequests = forceLoading ? null : requests
 
@@ -211,7 +213,12 @@ export function AdminPanel({
         </CardContent>
       </Card>
 
-      <UsersCard access={access} forceLoading={forceLoading} onError={onError} />
+      <UsersCard
+        access={access}
+        forceLoading={forceLoading}
+        onError={onError}
+        refreshKey={refreshKey}
+      />
 
       <Card>
         <CardHeader>
@@ -228,6 +235,7 @@ export function AdminPanel({
             emptyLabel="No audit entries."
             forceLoading={forceLoading}
             onError={onError}
+            refreshKey={refreshKey}
           />
         </CardContent>
       </Card>
@@ -247,10 +255,12 @@ function UsersCard({
   access,
   forceLoading,
   onError,
+  refreshKey,
 }: {
   access: AccessInfo
   forceLoading: boolean
   onError: (message: string) => void
+  refreshKey: number
 }) {
   const [users, setUsers] = useState<UserSummary[] | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -266,7 +276,7 @@ function UsersCard({
   useEffect(() => {
     if (forceLoading) return
     void load()
-  }, [forceLoading, load])
+  }, [forceLoading, load, refreshKey])
 
   const visibleUsers = forceLoading ? null : users
 

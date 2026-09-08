@@ -20,6 +20,7 @@ interface AppInfoPanelProps {
   compact?: boolean
   className?: string
   forceLoading?: boolean
+  refreshKey?: number
 }
 
 /**
@@ -35,7 +36,12 @@ const LABELS = ['Backend', 'Frontend'] as const
  * Displays curated release information for the backend and frontend. Used on the login
  * screen and the About tab.
  */
-export function AppInfoPanel({ compact = false, className, forceLoading = false }: AppInfoPanelProps) {
+export function AppInfoPanel({
+  compact = false,
+  className,
+  forceLoading = false,
+  refreshKey = 0,
+}: AppInfoPanelProps) {
   const [sources, setSources] = useState<AppInfoSource[] | null>(null)
 
   useEffect(() => {
@@ -51,7 +57,7 @@ export function AppInfoPanel({ compact = false, className, forceLoading = false 
     return () => {
       active = false
     }
-  }, [forceLoading])
+  }, [forceLoading, refreshKey])
 
   const visibleSources = forceLoading ? null : sources
 

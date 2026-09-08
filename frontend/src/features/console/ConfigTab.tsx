@@ -65,10 +65,12 @@ export function ConfigTab({
   canEdit,
   forceLoading = false,
   onError,
+  refreshKey = 0,
 }: {
   canEdit: boolean
   forceLoading?: boolean
   onError: (message: string) => void
+  refreshKey?: number
 }) {
   const [schema, setSchema] = useState<ConfigSchema | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
@@ -96,7 +98,7 @@ export function ConfigTab({
   useEffect(() => {
     if (forceLoading) return
     void load()
-  }, [forceLoading, load])
+  }, [forceLoading, load, refreshKey])
 
   const groups = useMemo(() => {
     if (!schema) return []
