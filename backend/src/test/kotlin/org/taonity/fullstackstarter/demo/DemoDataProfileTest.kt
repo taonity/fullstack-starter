@@ -29,11 +29,18 @@ class DemoDataProfileTest {
         assertThat(pending).hasSize(2)
         assertThat(pending.map { it.requestedRole }).containsExactly(ConsoleRole.VIEWER, ConsoleRole.EDITOR)
 
-        assertThat(auditLogRepository.count()).isEqualTo(5)
-        assertThat(auditLogRepository.existsByActorGoogleId("demo-data-owner")).isTrue()
+        assertThat(auditLogRepository.countByActorGoogleId(DEMO_ACTOR_ID)).isEqualTo(5)
+
+        val userCount = userRepository.count()
+        val auditLogCount = auditLogRepository.count()
 
         assertThat(contributors.sumOf { it.seed() }).isZero()
-        assertThat(userRepository.count()).isEqualTo(2)
-        assertThat(auditLogRepository.count()).isEqualTo(5)
+        assertThat(userRepository.count()).isEqualTo(userCount)
+        assertThat(auditLogRepository.count()).isEqualTo(auditLogCount)
+        assertThat(auditLogRepository.countByActorGoogleId(DEMO_ACTOR_ID)).isEqualTo(5)
+    }
+
+    private companion object {
+        const val DEMO_ACTOR_ID = "demo-data-owner"
     }
 }

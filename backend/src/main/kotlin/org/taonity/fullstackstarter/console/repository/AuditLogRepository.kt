@@ -13,6 +13,8 @@ import java.time.Instant
 interface AuditLogRepository : JpaRepository<AuditLogEntity, String> {
     fun existsByActorGoogleId(actorGoogleId: String): Boolean
 
+    fun countByActorGoogleId(actorGoogleId: String): Long
+
     @Query(
         """
         SELECT a FROM AuditLogEntity a

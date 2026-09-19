@@ -28,6 +28,8 @@ Demo-data profile and idempotency:
 ./gradlew :backend:test --tests '*DemoDataProfileTest'
 ```
 
+CI uploads the Gradle HTML and XML results as the `backend-test-reports` workflow artifact, including when tests fail.
+
 Smoke tests require Docker and both application images. The command below matches the registry in `templates/docker/.env.test`:
 
 ```bash
