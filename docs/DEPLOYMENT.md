@@ -41,6 +41,12 @@ The file is passed with Compose's `--env-file` option for interpolation. Service
 
 The production override [`docker-compose.prodenv.yml`](../templates/docker/docker-compose.prodenv.yml) attaches backend and frontend to the external `prodenv-shared-internal` network. That network must already exist in the target production environment.
 
+The production override also exports PostgreSQL when the stack starts and then
+daily at `01:00`. Exports are stored under the deployment's
+`COMPOSE_PROJECT_NAME` in the external `prodenv-backup-staging` volume. Start
+the `prodenv` stack first so that volume exists. Set `BACKUP_SCHEDULE_TIME` in
+the deployment environment only when a different `HH:MM` time is required.
+
 Start production Compose from the repository root:
 
 ```bash

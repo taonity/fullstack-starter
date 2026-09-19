@@ -1,4 +1,14 @@
 services:
+  postgres-export:
+    extends:
+      file: backup/docker-compose.yml
+      service: postgres-export
+    networks:
+      backend:
+    depends_on:
+      db:
+        condition: service_healthy
+
   backend:
     networks:
       prodenv-shared-internal:
@@ -14,3 +24,10 @@ services:
 networks:
   prodenv-shared-internal:
     external: true
+
+  backend:
+
+volumes:
+  backup-staging:
+    external: true
+    name: prodenv-backup-staging
