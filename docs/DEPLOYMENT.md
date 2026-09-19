@@ -53,6 +53,33 @@ Start production Compose from the repository root:
 docker compose --env-file templates/docker/.env -f templates/docker/docker-compose.yml -f templates/docker/docker-compose.prodenv.yml up -d
 ```
 
+## Backup debugging
+
+Use the same environment and Compose files as the deployed stack.
+
+Run a PostgreSQL export immediately without changing the daily schedule:
+
+```bash
+docker compose --env-file templates/docker/.env -f templates/docker/docker-compose.yml -f templates/docker/docker-compose.prodenv.yml exec postgres-export sh /opt/backup/export-postgres.sh
+```
+
+Inspect exporter logs and health:
+
+```bash
+docker compose --env-file templates/docker/.env -f templates/docker/docker-compose.yml -f templates/docker/docker-compose.prodenv.yml logs --tail=100 postgres-export
+docker compose --env-file templates/docker/.env -f templates/docker/docker-compose.yml -f templates/docker/docker-compose.prodenv.yml ps postgres-export
+```
+
+From the `prodenv` directory, validate the completed export. Replace the
+project name with the deployment's `COMPOSE_PROJECT_NAME`:
+
+```bash
+docker compose exec backrest sh /hooks/validate-export.sh /userdata/fullstack-starter-prod 26
+```
+
+After a successful export and validation, use **Backup Now** in Backrest to
+upload it immediately. The normal export and snapshot schedules are unchanged.
+
 ## Health endpoints
 
 - Backend: `GET /actuator/health`
