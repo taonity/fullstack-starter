@@ -11,8 +11,8 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       PGDATABASE: fullstack_starter_db
     volumes:
-      - ./backup/export-postgres.sh:/opt/backup/export-postgres.sh:ro
-      - ./backup/run-scheduled.sh:/opt/backup/run-scheduled.sh:ro
+      - ./export-postgres.sh:/opt/backup/export-postgres.sh:ro
+      - ./run-scheduled.sh:/opt/backup/run-scheduled.sh:ro
       - backup-staging:/backup-staging
     entrypoint: ["sh", "/opt/backup/run-scheduled.sh"]
     healthcheck:
