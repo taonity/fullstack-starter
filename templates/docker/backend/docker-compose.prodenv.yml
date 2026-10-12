@@ -1,0 +1,10 @@
+services:
+  fullstack-starter-prod:
+    cpus: "${BACKEND_CPU_LIMIT:-1.00}"
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-768m}
+    memswap_limit: ${BACKEND_MEMORY_SWAP_LIMIT:-1024m}
+
+  fullstack-starter-stage:
+    cpus: "${BACKEND_CPU_LIMIT:-0.50}"
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-512m}
+    memswap_limit: ${BACKEND_MEMORY_SWAP_LIMIT:-768m}
