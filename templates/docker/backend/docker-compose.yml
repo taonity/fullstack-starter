@@ -1,5 +1,8 @@
 services:
   backend:
+    extends:
+      file: ../${COMPOSE_CREDENTIALS_FILE:-credentials-env.yml}
+      service: backend
     image: generaltao725/fullstack-starter-backend:latest
     mem_limit: ${BACKEND_MEMORY_LIMIT:-768m}
     environment:
@@ -8,10 +11,6 @@ services:
         -XX:InitialRAMPercentage=${BACKEND_INITIAL_RAM_PERCENTAGE:-10.0}
         -XX:MaxRAMPercentage=${BACKEND_MAX_RAM_PERCENTAGE:-60.0}
         ${BACKEND_JAVA_EXTRA_OPTIONS:-}
-      POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER must be set}
-      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be set}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET must be set}
 #      LOGGING_LEVEL_ROOT: TRACE
 #      LOGGING_LEVEL_ORG_EXAMPLE_FULLSTACKSTARTER: DEBUG
     command: --spring.profiles.active=${SPRING_PROFILES_ACTIVE:?SPRING_PROFILES_ACTIVE must be set}

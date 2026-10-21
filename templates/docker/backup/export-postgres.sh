@@ -40,7 +40,11 @@ echo "Dumping database; pg_dump does not report progress."
 pg_dump --format=custom --file="$temp_dir/database.dump" "$PGDATABASE"
 echo "Database dump complete ($(wc -c < "$temp_dir/database.dump") bytes)."
 echo "Dumping PostgreSQL roles and global settings."
-pg_dumpall --globals-only > "$temp_dir/globals.sql"
+if [ "${BACKUP_INCLUDE_ROLE_PASSWORDS:-true}" = "false" ]; then
+  pg_dumpall --globals-only --no-role-passwords --no-password --database="$PGDATABASE" > "$temp_dir/globals.sql"
+else
+  pg_dumpall --globals-only > "$temp_dir/globals.sql"
+fi
 {
   printf 'created_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf 'database=%s\n' "$PGDATABASE"

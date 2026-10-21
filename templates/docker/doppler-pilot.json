@@ -1,0 +1,34 @@
+{
+  "deployment": "fullstack-starter-stage",
+  "enabled": false,
+  "state_directory": "/var/lib/prodenv-doppler",
+  "checkout": "/opt/projects/fullstack-starter",
+  "template_directory": "/etc/webhook/cache/fullstack-starter-stage",
+  "host_override": "/opt/prodenv/cicd/docker-webhook/shared/envs/fullstack-starter-stage/docker-compose.override.yml",
+  "metrics_directory": "/var/lib/docker/volumes/prodenv-monitoring-textfile/_data",
+  "doppler_executable": "/usr/local/bin/doppler",
+  "age_executable": "/usr/local/bin/age",
+  "recovery": {
+    "directory": "/var/lib/prodenv-secret-recovery",
+    "recipients": [],
+    "max_age_hours": 48,
+    "keep_exports": 48
+  },
+  "roles": {
+    "admin": "postgres",
+    "app": "starter_app",
+    "migration": "starter_migration",
+    "backup": "starter_backup"
+  },
+  "identities": {
+    "sandbox": {"token_file": "/etc/prodenv-doppler/tokens/sandbox", "project": "sandbox", "config": "stg", "expires_at": "unknown"}
+  },
+  "credentials": {
+    "db_admin_password": {"source": "sandbox", "key": "FULLSTACK_STARTER_STAGE_DB_ADMIN_PASSWORD", "expires_at": "unknown", "review_at": "unknown"},
+    "db_app_password": {"source": "sandbox", "key": "FULLSTACK_STARTER_STAGE_DB_APP_PASSWORD", "expires_at": "unknown", "review_at": "unknown"},
+    "db_migration_password": {"source": "sandbox", "key": "FULLSTACK_STARTER_STAGE_DB_MIGRATION_PASSWORD", "expires_at": "unknown", "review_at": "unknown"},
+    "db_backup_password": {"source": "sandbox", "key": "FULLSTACK_STARTER_STAGE_DB_BACKUP_PASSWORD", "expires_at": "unknown", "review_at": "unknown"},
+    "google_client_id": {"source": "sandbox", "key": "FULLSTACK_STARTER_STAGE_GOOGLE_CLIENT_ID", "expires_at": "unknown", "review_at": "unknown"},
+    "google_client_secret": {"source": "sandbox", "key": "FULLSTACK_STARTER_STAGE_GOOGLE_CLIENT_SECRET", "expires_at": "unknown", "review_at": "unknown"}
+  }
+}

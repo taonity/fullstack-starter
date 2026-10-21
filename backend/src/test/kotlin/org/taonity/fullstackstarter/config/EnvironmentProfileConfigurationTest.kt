@@ -2,10 +2,47 @@ package org.taonity.fullstackstarter.config
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import java.nio.file.Files
+import java.nio.file.Path
 
 class EnvironmentProfileConfigurationTest {
+
+    @Test
+    fun `container secrets resolve from required configuration tree`(@TempDir directory: Path) {
+        val secrets = mapOf(
+            "POSTGRES_APP_USER" to "fixture_app",
+            "POSTGRES_APP_PASSWORD" to "fixture:password'\\dollar$",
+            "GOOGLE_CLIENT_ID" to "fixture-client",
+            "GOOGLE_CLIENT_SECRET" to "fixture-google-secret",
+        )
+        secrets.forEach { (name, value) -> Files.writeString(directory.resolve(name), value) }
+
+        ApplicationContextRunner()
+            .withInitializer(ConfigDataApplicationContextInitializer())
+            .withSystemProperties(
+                "spring.profiles.active=stage",
+                "spring.config.import=configtree:${directory.toAbsolutePath().toString().replace('\\', '/')}/",
+            )
+            .run { context ->
+                assertThat(context.startupFailure).isNull()
+                val environment = context.environment
+                assertThat(environment.getProperty("POSTGRES_APP_PASSWORD"))
+                    .isEqualTo(secrets["POSTGRES_APP_PASSWORD"])
+                assertThat(environment.getProperty("spring.security.oauth2.client.registration.google-fullstack-starter.client-secret"))
+                    .isEqualTo(secrets["GOOGLE_CLIENT_SECRET"])
+            }
+    }
+
+    @Test
+    fun `missing required secret directory fails startup`(@TempDir directory: Path) {
+        ApplicationContextRunner()
+            .withInitializer(ConfigDataApplicationContextInitializer())
+            .withSystemProperties("spring.config.import=configtree:${directory.resolve("missing").toAbsolutePath().toString().replace('\\', '/')}/")
+            .run { context -> assertThat(context.startupFailure).isNotNull() }
+    }
 
     @Test
     fun `stage profile loads its public deployment configuration`() {
