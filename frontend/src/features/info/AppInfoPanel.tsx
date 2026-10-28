@@ -11,6 +11,7 @@ import {
   fetchFrontendInfo,
   formatRelativeAge,
   infoRows,
+  GITHUB_REPO_URL,
   type AppInfoSource,
   type InfoRow,
 } from '@/lib/appInfo'
@@ -63,6 +64,7 @@ export function AppInfoPanel({
 
   return (
     <div className={className}>
+      {!compact && <ConsoleGuide />}
       <div className="grid gap-4 sm:grid-cols-2">
         {LABELS.map((label, index) => (
           <InfoCard
@@ -74,6 +76,44 @@ export function AppInfoPanel({
         ))}
       </div>
     </div>
+  )
+}
+
+function ConsoleGuide() {
+  const issuesUrl = GITHUB_REPO_URL ? `${GITHUB_REPO_URL}/issues` : null
+
+  return (
+    <Card className="mb-4 text-left">
+      <CardHeader className="border-b">
+        <CardTitle>Using the console</CardTitle>
+        <p className="text-sm text-muted-foreground">Your assigned role determines which controls are available.</p>
+      </CardHeader>
+      <CardContent className="grid gap-5 md:grid-cols-2">
+        <section aria-labelledby="console-roles" className="space-y-3">
+          <h3 id="console-roles" className="text-sm font-semibold">Roles and permissions</h3>
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+            <dt className="font-medium">Viewer</dt>
+            <dd className="text-muted-foreground">View the console and configuration. Request Editor access from the role controls.</dd>
+            <dt className="font-medium">Editor</dt>
+            <dd className="text-muted-foreground">Viewer access plus editing permission for features that support it. Runtime settings are managed by the Owner.</dd>
+            <dt className="font-medium">Admin</dt>
+            <dd className="text-muted-foreground">Review access requests, manage roles up to Editor, and inspect the audit log.</dd>
+            <dt className="font-medium">Owner</dt>
+            <dd className="text-muted-foreground">Admin access plus runtime configuration and management of Admin and Owner roles.</dd>
+          </dl>
+        </section>
+        <section aria-labelledby="console-feedback" className="space-y-3 text-sm">
+          <h3 id="console-feedback" className="font-semibold">Feedback</h3>
+          <p className="text-muted-foreground">When reporting an issue, include the affected screen, what you expected, and what happened. Leave credentials and private data out of reports.</p>
+          {issuesUrl && (
+            <a href={issuesUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid">
+              Report an issue on GitHub
+            </a>
+          )}
+        </section>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -136,8 +176,8 @@ function InfoCard({
             {rows.map((row, index) => (
               <div key={row.key}>
                 {index > 0 && <Separator className="my-1.5" />}
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="shrink-0 text-xs text-muted-foreground">{row.label}</dt>
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-baseline gap-2">
+                  <dt className="min-w-0 text-xs text-muted-foreground wrap-anywhere">{row.label}</dt>
                   <dd className="min-w-0 break-all text-right text-xs font-medium tabular-nums">
                     <InfoValueCell row={row} />
                   </dd>

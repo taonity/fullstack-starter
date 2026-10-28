@@ -25,6 +25,7 @@ Use this checklist to add one vertical feature without bypassing existing bounda
 10. Build the UI inside the relevant feature directory.
    [`frontend/src/features/console`](../frontend/src/features/console/) shows the current feature organization.
    For paginated data tables, use [`DataTab`](../frontend/src/features/console/DataTab.tsx) and provide every column with a backend `sortKey` and `defaultWidth`. The shared table contract includes resizable persisted widths, overflow-only full-text previews, sortable headers, column visibility controls, and silent refreshes; do not reimplement or omit these behaviors.
+   Tables also provide persisted column visibility, numeric width controls with reset, individual boundary reset with Home or double-click, sticky action columns, exact-match search, responsive record layouts, and pagination above and below the results. Forward the optional `exact` load argument to the backend when using search. Use `DatePeriodFilter` for UTC calendar-date bounds and change `filterKey` when external filters change so the table restarts at the first page.
 11. Add focused backend tests for authorization, validation, service behavior, persistence, error mapping, and demo-data idempotency as applicable.
    Add frontend tests for proxy and UI behavior.
 12. Follow [Testing](TESTING.md) for current commands and test patterns.

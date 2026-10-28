@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '@/lib/clientApi'
+import { fetchWithTimeout, DEFAULT_TIMEOUT_ERROR_MESSAGE } from '@/lib/clientApi'
 import { getRuntimeConfig } from '@/lib/runtimeConfig'
 import { getCookie } from '@/lib/cookies'
 import type {
@@ -29,6 +29,7 @@ class ApiError extends Error {
 
 /** Extracts the backend's error message (ClientErrorResponse.errorMessage) if present. */
 async function errorMessage(res: Response): Promise<string> {
+  if (res.status === 504) return DEFAULT_TIMEOUT_ERROR_MESSAGE
   try {
     const data = (await res.json()) as { errorMessage?: string }
     if (data && typeof data.errorMessage === 'string' && data.errorMessage) {
@@ -41,9 +42,9 @@ async function errorMessage(res: Response): Promise<string> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetchWithTimeout(`${BASE}${path}`, { timeoutMs: 10000 })
+  const res = await fetchWithTimeout(`${BASE}${path}`, { timeoutMs: 60_000 })
   if (!res.ok) {
-    throw new ApiError(res.status, `Request failed (${res.status})`)
+    throw new ApiError(res.status, await errorMessage(res))
   }
   return res.json() as Promise<T>
 }
@@ -97,9 +98,14 @@ export const consoleApi = {
     field?: string,
     sort?: string,
     direction?: string,
+    exact?: boolean,
+    startDate?: string,
+    endDate?: string,
   ) => get<PageResponse<AuditLog>>(
-    buildListQuery('/audit-logs', page, size, q, field, sort, direction),
+    buildListQuery('/audit-logs', page, size, q, field, sort, direction, exact, startDate, endDate),
   ),
+
+  getAuditDateRange: () => get<{ startDate: string | null; endDate: string | null }>('/audit-logs/date-range'),
 
   getConfig: () => get<ConfigSchema>('/config'),
 
@@ -118,6 +124,9 @@ function buildListQuery(
   field?: string,
   sort?: string,
   direction?: string,
+  exact?: boolean,
+  startDate?: string,
+  endDate?: string,
 ): string {
   const params = new URLSearchParams({ page: String(page), size: String(size) })
   if (q && q.trim()) {
@@ -126,6 +135,9 @@ function buildListQuery(
       params.set('field', field)
     }
   }
+  if (exact) params.set('exact', 'true')
+  if (startDate) params.set('startDate', startDate)
+  if (endDate) params.set('endDate', endDate)
   if (direction) {
     params.set('direction', direction)
   }

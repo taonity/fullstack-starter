@@ -72,6 +72,106 @@ class ConsoleDataControllerTest : ControllerTestsBaseClass() {
             .andExpect(jsonPath("$.content[2].targetId").value("a-record"))
     }
 
+    @Test
+    fun `exact match is case insensitive and scoped to the selected field`() {
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("q", "a-record").param("field", "targetId").param("exact", "true"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].action").value("APPROVE_ACCESS"))
+
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("q", "RECORD").param("field", "targetId").param("exact", "true"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(0))
+
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("q", "change_role").param("field", "action").param("exact", "true"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(1))
+
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("q", "audit@example.com").param("field", "targetId").param("exact", "true"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(0))
+    }
+
+    @Test
+    fun `date periods use inclusive UTC calendar days and combine with search and pagination`() {
+        auditLogRepository.save(auditLog(AuditAction.RESET_CONFIG, "end-of-day", Instant.parse("2026-01-02T23:59:59.999Z")))
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("startDate", "2026-01-02").param("endDate", "2026-01-02")
+            .param("sort", "occurredAt").param("direction", "asc").param("size", "1"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.content[0].targetId").value("m-record"))
+            .andExpect(jsonPath("$.totalPages").value(2))
+
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("startDate", "2026-01-02").param("endDate", "2026-01-02")
+            .param("q", "END-OF-DAY").param("field", "targetId").param("exact", "true"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].targetId").value("end-of-day"))
+    }
+
+    @Test
+    fun `date bounds can be used independently`() {
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("startDate", "2026-01-02"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(2))
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("endDate", "2026-01-02"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(2))
+    }
+
+    @Test
+    fun `invalid date periods return a client error`() {
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("startDate", "2026-01-03").param("endDate", "2026-01-01"))
+            .andExpect(status().isBadRequest)
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("startDate", "2026-02-30"))
+            .andExpect(status().isBadRequest)
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("endDate", "invalid"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `date and exact search remain restricted to admins`() {
+        mockMvc.perform(get("/console/audit-logs").param("exact", "true").param("startDate", "2026-01-01"))
+            .andExpect(status().isUnauthorized)
+        userRepository.save(UserEntity(googleId = TEST_USER_ID, email = "owner@example.com", displayName = "Viewer"))
+        mockMvc.perform(get("/console/audit-logs").with(oauth2Login().oauth2User(principal()))
+            .param("exact", "true").param("startDate", "2026-01-01"))
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `reports available audit dates in UTC and supports an empty log`() {
+        mockMvc.perform(get("/console/audit-logs/date-range").with(oauth2Login().oauth2User(principal())))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.startDate").value("2026-01-01"))
+            .andExpect(jsonPath("$.endDate").value("2026-01-03"))
+        auditLogRepository.deleteAll()
+        mockMvc.perform(get("/console/audit-logs/date-range").with(oauth2Login().oauth2User(principal())))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.startDate").isEmpty)
+            .andExpect(jsonPath("$.endDate").isEmpty)
+    }
+
+    @Test
+    fun `available audit dates remain restricted to admins`() {
+        mockMvc.perform(get("/console/audit-logs/date-range"))
+            .andExpect(status().isUnauthorized)
+        userRepository.save(UserEntity(googleId = TEST_USER_ID, email = "owner@example.com", displayName = "Viewer"))
+        mockMvc.perform(get("/console/audit-logs/date-range").with(oauth2Login().oauth2User(principal())))
+            .andExpect(status().isForbidden)
+    }
+
     private fun auditLog(action: AuditAction, targetId: String, occurredAt: Instant) = AuditLogEntity(
         action = action,
         targetType = "CONFIG",

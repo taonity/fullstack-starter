@@ -169,14 +169,14 @@ export default function DataConsole({
       {error && <ErrorNotification message={error} onClose={() => setError(null)} />}
 
       <Tabs value={selectedTab} onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}>
-        <div className="flex items-center justify-between gap-2">
+        <div className="console-navigation flex flex-wrap items-center justify-between gap-2">
           {/* Mobile: compact dropdown keeps every tab one tap away without hidden horizontal scroll. */}
           <Select
             items={tabItems}
             value={selectedTab}
             onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}
           >
-            <SelectTrigger size="sm" className="h-8 w-36 sm:hidden">
+            <SelectTrigger size="sm" className="h-8 w-36 sm:hidden" aria-label="Console section">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -215,7 +215,7 @@ export default function DataConsole({
               </TabsTrigger>
             )}
           </TabsList>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {access ? (
               <>
                 <UpgradeAccessControl access={access} onUpdated={setAccess} onError={setError} />
@@ -227,13 +227,13 @@ export default function DataConsole({
           </div>
         </div>
 
-        <TabsContent value="about" className="pt-2" keepMounted>
+        <TabsContent value="about" className="console-inset pt-2" keepMounted>
           {visited.has('about') && (
             <AppInfoPanel forceLoading={forceLoading} refreshKey={refreshKeys.about} />
           )}
         </TabsContent>
 
-        <TabsContent value="config" className="pt-2" keepMounted>
+        <TabsContent value="config" className="console-inset pt-2" keepMounted>
           {visited.has('config') && (
             <ConfigTab
               canEdit={access?.isOwner === true}
@@ -316,7 +316,7 @@ function AccessGate({
             value={desiredRole}
             onValueChange={(v) => setDesiredRole((v ?? 'VIEWER') as ConsoleRole)}
           >
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-full sm:w-[220px]" aria-label="Requested access role">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

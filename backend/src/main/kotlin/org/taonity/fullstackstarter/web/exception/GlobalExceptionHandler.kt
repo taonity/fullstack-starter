@@ -14,6 +14,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
 import org.taonity.fullstackstarter.config.ConfigValidationException
 import org.taonity.fullstackstarter.console.exception.ConsoleForbiddenException
 import org.taonity.fullstackstarter.console.exception.ConsoleNotFoundException
+import org.taonity.fullstackstarter.console.exception.ConsoleValidationException
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -42,6 +44,16 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(ClientErrorResponse(ClientErrorCode.NOT_FOUND, e.message ?: "Not found"))
     }
+
+    @ExceptionHandler(ConsoleValidationException::class, MethodArgumentTypeMismatchException::class)
+    fun handleInvalidQuery(e: Exception): ResponseEntity<ClientErrorResponse> =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(
+                ClientErrorResponse(
+                    ClientErrorCode.VALIDATION_ERROR,
+                    if (e is ConsoleValidationException) e.message ?: "Invalid query" else "Invalid query parameter",
+                ),
+            )
 
     @ExceptionHandler(ConfigValidationException::class)
     fun handleConfigValidation(e: ConfigValidationException): ResponseEntity<ClientErrorResponse> {

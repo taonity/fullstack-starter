@@ -9,12 +9,23 @@ export interface ServerEnv {
   localBackendUrl: string
   publicBackendUrl: string
   csrfCookieName: string
+  backendRequestTimeoutMs: number
 }
 
 function required(name: string): string {
   const value = process.env[name]?.trim()
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`)
+  }
+  return value
+}
+
+function positiveInteger(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim()
+  if (!raw) return fallback
+  const value = Number(raw)
+  if (!Number.isSafeInteger(value) || value <= 0 || value > 2_147_483_647) {
+    throw new Error(`${name} must be a positive integer no greater than 2147483647`)
   }
   return value
 }
@@ -34,6 +45,7 @@ export function getServerEnv(): ServerEnv {
   return {
     profile,
     ...config,
+    backendRequestTimeoutMs: positiveInteger('BACKEND_REQUEST_TIMEOUT_MS', 60_000),
     localBackendUrl: process.env.LOCAL_BACKEND_URL?.trim() || config.localBackendUrl,
   }
 }

@@ -2,6 +2,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 .gradle/
+.kotlin/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

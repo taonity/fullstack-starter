@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/table'
 import { consoleApi } from './api'
 import { DataTab, type Column } from './DataTab'
-import { formatTime } from './format'
+import { formatTime, formatExactTime } from './format'
+import { DatePeriodFilter, type DatePeriod } from './DatePeriodFilter'
 import type { AccessInfo, AuditLog, ConsoleRole, PendingRequest, UserSummary } from './types'
 
 const AUDIT_COLUMNS: Column<AuditLog>[] = [
@@ -32,7 +33,7 @@ const AUDIT_COLUMNS: Column<AuditLog>[] = [
     sortKey: 'occurredAt',
     initialSortDirection: 'desc',
     value: (a) => a.occurredAt,
-    render: (a) => formatTime(a.occurredAt),
+    render: (a) => <time dateTime={a.occurredAt} title={formatExactTime(a.occurredAt)}>{formatTime(a.occurredAt)}</time>,
     cellClassName: 'whitespace-nowrap text-muted-foreground tabular-nums',
     defaultWidth: 180,
     skeleton: 'w-[85%]',
@@ -89,6 +90,7 @@ export function AdminPanel({
   onPendingCountChange?: (count: number) => void
   refreshKey?: number
 }) {
+  const [datePeriod, setDatePeriod] = useState<DatePeriod>({ startDate: '', endDate: '' })
   const [requests, setRequests] = useState<PendingRequest[] | null>(null)
   const [grantRoles, setGrantRoles] = useState<Record<string, ConsoleRole>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -132,14 +134,14 @@ export function AdminPanel({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="admin-panel flex min-w-0 flex-col gap-4 sm:gap-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Pending access requests</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-lg border">
-            <Table className="min-w-[640px] table-fixed [&_td]:py-2 [&_tr]:h-12">
+          <div className="data-table-frame min-w-0 overflow-hidden rounded-lg border">
+            <Table className="mobile-records min-w-[640px] table-fixed [&_td]:py-2 [&_tr]:h-12">
               <colgroup>
                 <col className="w-[18%]" />
                 <col className="w-[26%]" />
@@ -159,7 +161,7 @@ export function AdminPanel({
               <TableBody>
                 {!visibleRequests &&
                   Array.from({ length: 2 }).map((_, index) => (
-                    <TableRow key={index} className="h-12 hover:bg-transparent">
+                    <TableRow key={index} className="record-row h-12 hover:bg-transparent" aria-hidden="true">
                       <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -168,18 +170,18 @@ export function AdminPanel({
                     </TableRow>
                   ))}
                 {visibleRequests?.length === 0 && (
-                  <TableRow>
+                  <TableRow className="record-empty">
                     <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
                       No pending requests.
                     </TableCell>
                   </TableRow>
                 )}
                 {visibleRequests?.map((r) => (
-                    <TableRow key={r.googleId} className="h-12">
-                      <TableCell className="truncate font-medium">{r.displayName}</TableCell>
-                      <TableCell className="truncate text-muted-foreground">{r.email}</TableCell>
-                      <TableCell>{r.requestedRole ?? '—'}</TableCell>
-                      <TableCell>
+                    <TableRow key={r.googleId} className="record-row h-12">
+                      <TableCell data-label="User" className="truncate font-medium">{r.displayName}</TableCell>
+                      <TableCell data-label="Email" className="truncate text-muted-foreground">{r.email}</TableCell>
+                      <TableCell data-label="Requested">{r.requestedRole ?? '—'}</TableCell>
+                      <TableCell data-label="Grant">
                         <Select
                           items={{ VIEWER: 'Viewer', EDITOR: 'Editor' }}
                           value={grantRoles[r.googleId] ?? 'VIEWER'}
@@ -190,7 +192,7 @@ export function AdminPanel({
                             }))
                           }
                         >
-                          <SelectTrigger size="sm" className="w-[120px]">
+                          <SelectTrigger size="sm" className="w-full md:w-[120px]" aria-label={`Grant role for ${r.displayName}`} disabled={busyId !== null}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -199,11 +201,11 @@ export function AdminPanel({
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="record-decision text-right">
                         <div className="flex justify-end gap-2">
                           <Button
                             size="sm"
-                            disabled={busyId === r.googleId}
+                            disabled={busyId !== null}
                             onClick={() => decide(r, true)}
                           >
                             Approve
@@ -211,7 +213,7 @@ export function AdminPanel({
                           <Button
                             size="sm"
                             variant="destructive"
-                            disabled={busyId === r.googleId}
+                            disabled={busyId !== null}
                             onClick={() => decide(r, false)}
                           >
                             Reject
@@ -241,20 +243,25 @@ export function AdminPanel({
           </p>
         </CardHeader>
         <CardContent>
-          <DataTab<AuditLog>
-            columns={AUDIT_COLUMNS}
-            columnWidthsKey="audit-log"
-            defaultSortKey="occurredAt"
-            defaultSortDirection="desc"
-            rowKey={(a) => a.id}
-            load={(page, size, q, field, sort, direction) =>
-              consoleApi.listAuditLogs(page, size, q, field, sort, direction)
-            }
-            emptyLabel="No audit entries."
-            forceLoading={forceLoading}
-            onError={onError}
-            refreshKey={refreshKey}
-          />
+          <div className="flex min-w-0 flex-col gap-3">
+            <DatePeriodFilter value={datePeriod} onChange={setDatePeriod} disabled={forceLoading}
+              loadRange={consoleApi.getAuditDateRange} refreshKey={refreshKey} onError={onError} />
+            <DataTab<AuditLog>
+              columns={AUDIT_COLUMNS}
+              columnWidthsKey="audit-log"
+              defaultSortKey="occurredAt"
+              defaultSortDirection="desc"
+              rowKey={(a) => a.id}
+              filterKey={`${datePeriod.startDate}:${datePeriod.endDate}`}
+              load={(page, size, q, field, sort, direction, exact) =>
+                consoleApi.listAuditLogs(page, size, q, field, sort, direction, exact, datePeriod.startDate, datePeriod.endDate)
+              }
+              emptyLabel="No audit entries."
+              forceLoading={forceLoading}
+              onError={onError}
+              refreshKey={refreshKey}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -334,8 +341,8 @@ function UsersCard({
         </p>
       </CardHeader>
       <CardContent>
-        <div className="overflow-hidden rounded-lg border">
-          <Table className="min-w-[560px] table-fixed [&_td]:py-2 [&_tr]:h-12">
+        <div className="data-table-frame min-w-0 overflow-hidden rounded-lg border">
+          <Table className="mobile-records min-w-[560px] table-fixed [&_td]:py-2 [&_tr]:h-12">
             <colgroup>
               <col className="w-[24%]" />
               <col className="w-[34%]" />
@@ -353,7 +360,7 @@ function UsersCard({
             <TableBody>
               {!visibleUsers &&
                   Array.from({ length: 2 }).map((_, index) => (
-                  <TableRow key={index} className="h-12 hover:bg-transparent">
+                  <TableRow key={index} className="record-row h-12 hover:bg-transparent" aria-hidden="true">
                     <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
@@ -373,15 +380,15 @@ function UsersCard({
                   const targetIsAdmin = u.role === 'ADMIN' || u.role === 'OWNER'
                   const locked = isSelf || (targetIsAdmin && !access.isOwner)
                   return (
-                    <TableRow key={u.googleId} className="h-12">
-                      <TableCell className="truncate font-medium">{u.displayName}</TableCell>
-                      <TableCell className="truncate text-muted-foreground">{u.email}</TableCell>
-                      <TableCell>
+                    <TableRow key={u.googleId} className="record-row h-12">
+                      <TableCell data-label="User" className="truncate font-medium">{u.displayName}</TableCell>
+                      <TableCell data-label="Email" className="truncate text-muted-foreground">{u.email}</TableCell>
+                      <TableCell data-label="Status">
                         <Badge variant="secondary" className="font-normal">
                           {u.accessStatus}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-label="Role">
                         {locked ? (
                           <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
                         ) : (
@@ -390,7 +397,7 @@ function UsersCard({
                             value={u.role}
                             onValueChange={(v) => v && changeRole(u, v as ConsoleRole)}
                           >
-                            <SelectTrigger size="sm" className="w-[160px]" disabled={busyId === u.googleId}>
+                            <SelectTrigger size="sm" className="w-full md:w-[160px]" disabled={busyId !== null} aria-label={`Role for ${u.displayName}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

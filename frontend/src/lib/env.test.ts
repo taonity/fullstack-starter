@@ -19,6 +19,7 @@ describe('server environment', () => {
       localBackendUrl: backendUrl,
       publicBackendUrl: backendUrl,
       csrfCookieName,
+      backendRequestTimeoutMs: 60_000,
     })
   })
 
@@ -40,4 +41,16 @@ describe('server environment', () => {
 
     expect(getServerEnv().localBackendUrl).toBe('http://backend:8080')
   })
+  it('accepts a configured backend timeout', () => {
+    vi.stubEnv('FRONTEND_PROFILE', 'local')
+    vi.stubEnv('BACKEND_REQUEST_TIMEOUT_MS', '120000')
+    expect(getServerEnv().backendRequestTimeoutMs).toBe(120000)
+  })
+
+  it.each(['0', '-1', 'abc', '1.5', '2147483648'])('rejects an invalid timeout: %s', (timeout) => {
+    vi.stubEnv('FRONTEND_PROFILE', 'local')
+    vi.stubEnv('BACKEND_REQUEST_TIMEOUT_MS', timeout)
+    expect(() => getServerEnv()).toThrow('BACKEND_REQUEST_TIMEOUT_MS must be a positive integer')
+  })
+
 })

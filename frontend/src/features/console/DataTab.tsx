@@ -37,6 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { PageResponse } from './types'
+import { DataPagination } from './DataPagination'
 
 export type Column<T> = {
   key: string
@@ -52,13 +53,14 @@ export type Column<T> = {
   sortKey: string
   initialSortDirection?: 'asc' | 'desc'
   defaultVisible?: boolean
+  mobileContent?: boolean
 }
 
 type DataTabProps<T> = {
   columns: Column<T>[]
   columnWidthsKey: string
   rowKey: (row: T) => string
-  load: (page: number, size: number, q?: string, field?: string, sort?: string, direction?: string) => Promise<PageResponse<T>>
+  load: (page: number, size: number, q?: string, field?: string, sort?: string, direction?: string, exact?: boolean) => Promise<PageResponse<T>>
   /** Resolves the page index where a searched row lives in the unfiltered list, enabling the jump action. */
   locate?: (row: T, size: number, direction?: string) => Promise<number>
   /** When set, rows get a chevron toggle that reveals this content in a full-width row below. */
@@ -72,10 +74,11 @@ type DataTabProps<T> = {
   defaultSortDirection?: 'asc' | 'desc'
   forceLoading?: boolean
   onError: (message: string) => void
+  toolbarFilters?: React.ReactNode
+  filterKey?: string
   refreshKey?: number
 }
 
-const PAGE_SIZES = [20, 50, 100]
 const DEFAULT_PAGE_SIZE = 50
 const SKELETON_ROWS = 10
 const MIN_COLUMN_WIDTH = 64
@@ -88,12 +91,8 @@ type OverflowPreviewPayload = {
 }
 
 function hasOverflow(element: HTMLElement): boolean {
-  if (element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight) {
-    return true
-  }
-  const range = document.createRange()
-  range.selectNodeContents(element)
-  return [...range.getClientRects()].some((rect) => rect.width > element.clientWidth)
+  if (element.clientWidth === 0 || element.clientHeight === 0) return false
+  return element.scrollWidth - element.clientWidth > 1 || element.scrollHeight - element.clientHeight > 1
 }
 
 const SKELETON_BAR_WIDTHS = [
@@ -122,6 +121,8 @@ export function DataTab<T>({
   defaultSortDirection = 'desc',
   forceLoading = false,
   onError,
+  toolbarFilters,
+  filterKey = '',
   refreshKey = 0,
 }: DataTabProps<T>) {
   const [page, setPage] = useState(0)
@@ -132,6 +133,9 @@ export function DataTab<T>({
   const [query, setQuery] = useState('')
   const [activeQuery, setActiveQuery] = useState('')
   const [field, setField] = useState('all')
+  const [exactMatch, setExactMatch] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [columnWidthDrafts, setColumnWidthDrafts] = useState<Record<string, string>>({})
   const [sortKey, setSortKey] = useState(defaultSortKey)
   const [direction, setDirection] = useState<'desc' | 'asc'>(defaultSortDirection)
   const [highlightId, setHighlightId] = useState<string | null>(null)
@@ -143,8 +147,15 @@ export function DataTab<T>({
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
     () => Object.fromEntries(columns.map((column) => [column.key, column.defaultWidth])),
   )
+  const [hasCustomColumnWidths, setHasCustomColumnWidths] = useState(false)
   const [resizingColumn, setResizingColumn] = useState<string | null>(null)
   const [overflowPreviewHandle] = useState(() => PreviewCard.createHandle<OverflowPreviewPayload>())
+  const topPaginationRef = useRef<HTMLElement>(null)
+  const requestVersion = useRef(0)
+  const lastFilterKey = useRef(filterKey)
+  const rowRefs = useRef(new Map<string, HTMLTableRowElement>())
+  const customColumnKeysRef = useRef(new Set<string>())
+  const defaultColumnWidthsRef = useRef(Object.fromEntries(columns.map((column) => [column.key, column.defaultWidth])))
   const tableRef = useRef<HTMLTableElement | null>(null)
   const columnWidthsRef = useRef(columnWidths)
   const resizeRef = useRef<{
@@ -158,15 +169,23 @@ export function DataTab<T>({
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastRefreshKey = useRef(refreshKey)
+  const columnVisibilityStorageKey = `data-console.visible-columns.${columnWidthsKey}`
   const columnWidthsStorageKey = `data-console.column-widths.${columnWidthsKey}`
 
   const persistColumnWidths = useCallback((widths: Record<string, number>) => {
     try {
-      localStorage.setItem(columnWidthsStorageKey, JSON.stringify(widths))
+      const overrides = Object.fromEntries([...customColumnKeysRef.current].map((key) => [key, widths[key]]))
+      localStorage.setItem(columnWidthsStorageKey, JSON.stringify(overrides))
     } catch {
       // Resizing remains available when storage is unavailable.
     }
   }, [columnWidthsStorageKey])
+
+  const trackCustomWidth = useCallback((key: string, width: number) => {
+    if (Math.abs(width - (defaultColumnWidthsRef.current[key] ?? width)) < 1) customColumnKeysRef.current.delete(key)
+    else customColumnKeysRef.current.add(key)
+    setHasCustomColumnWidths(customColumnKeysRef.current.size > 0)
+  }, [])
 
   const updateColumnBoundary = useCallback((
     key: string,
@@ -179,32 +198,85 @@ export function DataTab<T>({
     const minimumDelta = Math.max(MIN_COLUMN_WIDTH - startWidth, startNextWidth - MAX_COLUMN_WIDTH)
     const maximumDelta = Math.min(MAX_COLUMN_WIDTH - startWidth, startNextWidth - MIN_COLUMN_WIDTH)
     const delta = Math.min(maximumDelta, Math.max(minimumDelta, requestedDelta))
-    const next = {
-      ...columnWidthsRef.current,
-      [key]: Math.round(startWidth + delta),
-      [nextKey]: Math.round(startNextWidth - delta),
-    }
+    const width = Math.round(startWidth + delta)
+    const next = { ...columnWidthsRef.current, [key]: width, [nextKey]: startWidth + startNextWidth - width }
+    trackCustomWidth(key, next[key]!)
+    trackCustomWidth(nextKey, next[nextKey]!)
     columnWidthsRef.current = next
     setColumnWidths(next)
     if (persist) persistColumnWidths(next)
-  }, [persistColumnWidths])
+  }, [persistColumnWidths, trackCustomWidth])
 
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(columnWidthsStorageKey) ?? '{}') as Record<string, unknown>
       const validKeys = new Set(columns.map((column) => column.key))
       const restored = Object.fromEntries(
-        Object.entries(stored).filter(
-          ([key, width]) => validKeys.has(key) && typeof width === 'number' && Number.isFinite(width),
+        Object.entries(stored && typeof stored === 'object' ? stored : {}).filter(
+          ([key, width]) => validKeys.has(key) && typeof width === 'number' && Number.isFinite(width) && width >= MIN_COLUMN_WIDTH && width <= MAX_COLUMN_WIDTH,
         ),
       ) as Record<string, number>
+      customColumnKeysRef.current = new Set(Object.keys(restored).filter((key) => Math.abs(restored[key]! - (defaultColumnWidthsRef.current[key] ?? restored[key]!)) >= 1))
+      setHasCustomColumnWidths(customColumnKeysRef.current.size > 0)
       const merged = { ...columnWidthsRef.current, ...restored }
       columnWidthsRef.current = merged
       setColumnWidths(merged)
     } catch {
-      localStorage.removeItem(columnWidthsStorageKey)
+      // Keep defaults if storage is blocked or contains invalid data.
     }
   }, [columnWidthsStorageKey, columns])
+
+  useEffect(() => {
+    try {
+      const stored: unknown = JSON.parse(localStorage.getItem(columnVisibilityStorageKey) ?? 'null')
+      if (Array.isArray(stored)) {
+        const keys = stored.filter((key): key is string => typeof key === 'string' && columns.some((column) => column.key === key))
+        if (keys.length) setVisibleColumnKeys(new Set(keys))
+      }
+    } catch {
+      // Visibility controls remain usable without storage.
+    }
+  }, [columnVisibilityStorageKey, columns])
+
+  const setExactColumnWidth = (column: Column<T>) => {
+    const draft = columnWidthDrafts[column.key]
+    const requested = draft?.trim() ? Number(draft) : Number.NaN
+    if (Number.isFinite(requested)) {
+      const width = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, Math.round(requested)))
+      const next = { ...columnWidthsRef.current, [column.key]: width }
+      trackCustomWidth(column.key, width)
+      columnWidthsRef.current = next
+      setColumnWidths(next)
+      persistColumnWidths(next)
+    }
+    setColumnWidthDrafts((previous) => {
+      const next = { ...previous }
+      delete next[column.key]
+      return next
+    })
+  }
+
+  const resetColumnWidths = () => {
+    const defaults = Object.fromEntries(columns.map((column) => [column.key, column.defaultWidth]))
+    columnWidthsRef.current = defaults
+    setColumnWidths(defaults)
+    setColumnWidthDrafts({})
+    customColumnKeysRef.current.clear()
+    setHasCustomColumnWidths(false)
+    try {
+      localStorage.removeItem(columnWidthsStorageKey)
+    } catch {
+      // Reset still applies when storage is blocked.
+    }
+  }
+
+  const resetColumnBoundary = (key: string, nextKey: string) => {
+    const width = columnWidthsRef.current[key]
+    const nextWidth = columnWidthsRef.current[nextKey]
+    const defaultWidth = defaultColumnWidthsRef.current[key]
+    if (width === undefined || nextWidth === undefined || defaultWidth === undefined) return
+    updateColumnBoundary(key, nextKey, width, nextWidth, defaultWidth - width, true)
+  }
 
   useEffect(() => () => {
     document.body.style.cursor = ''
@@ -270,6 +342,11 @@ export function DataTab<T>({
     key: string,
     nextKey: string,
   ) => {
+    if (event.key === 'Home') {
+      event.preventDefault()
+      resetColumnBoundary(key, nextKey)
+      return
+    }
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     event.preventDefault()
     const currentWidth = columnWidthsRef.current[key]
@@ -293,28 +370,46 @@ export function DataTab<T>({
       searchField: string,
       targetSortKey: string,
       dir: string,
+      exact: boolean,
       // A silent reload keeps the current table visible and only spins the refresh icon,
       // instead of swapping the rows out for skeletons.
       opts?: { silent?: boolean },
     ) => {
-      if (opts?.silent) setRefreshing(true)
-      else setLoading(true)
+      if (searchTimer.current) clearTimeout(searchTimer.current)
+      const request = ++requestVersion.current
+      setLoading(!opts?.silent)
+      setRefreshing(!!opts?.silent)
+      setLoadError(false)
       try {
-        const result = await load(
+        let result = await load(
           targetPage,
           targetSize,
           q.trim() || undefined,
           searchField,
           targetSortKey || undefined,
           dir,
+          exact,
         )
+        if (request !== requestVersion.current) return false
+        if (result.totalPages > 0 && result.page >= result.totalPages) {
+          result = await load(result.totalPages - 1, targetSize, q.trim() || undefined, searchField, targetSortKey, dir, exact)
+          if (request !== requestVersion.current) return false
+        }
+        if (result.totalPages === 0 && result.page > 0) result = { ...result, page: 0 }
         setData(result)
         setPage(result.page)
-      } catch {
-        onError('Failed to load data.')
+        setSize(result.size)
+        return true
+      } catch (error) {
+        if (request !== requestVersion.current) return false
+        setLoadError(true)
+        onError(error instanceof Error ? error.message : 'Failed to load data.')
+        return false
       } finally {
-        if (opts?.silent) setRefreshing(false)
-        else setLoading(false)
+        if (request === requestVersion.current) {
+          setRefreshing(false)
+          setLoading(false)
+        }
       }
     },
     [load, onError],
@@ -330,14 +425,15 @@ export function DataTab<T>({
     if (forceLoading) return
     if (didInitialLoad.current) return
     didInitialLoad.current = true
-    void reload(0, DEFAULT_PAGE_SIZE, '', 'all', sortKey, defaultSortDirection)
+    void reload(0, DEFAULT_PAGE_SIZE, '', 'all', sortKey, defaultSortDirection, false)
   }, [defaultSortDirection, forceLoading, reload, sortKey])
 
   useEffect(() => {
     if (forceLoading || !didInitialLoad.current || lastRefreshKey.current === refreshKey) return
     lastRefreshKey.current = refreshKey
-    void reload(page, size, activeQuery, field, sortKey, direction, { silent: true })
-  }, [activeQuery, direction, field, forceLoading, page, refreshKey, reload, size, sortKey])
+    setActiveQuery(query)
+    void reload(query === activeQuery ? page : 0, size, query, field, sortKey, direction, exactMatch, { silent: true })
+  }, [activeQuery, direction, exactMatch, field, forceLoading, page, query, refreshKey, reload, size, sortKey])
 
   useEffect(
     () => () => {
@@ -347,28 +443,54 @@ export function DataTab<T>({
     [],
   )
 
-  // Debounce the search box; a new search always starts from the first page.
-  // Uses a silent reload so the existing rows stay visible with just a small spinner instead of
-  // swapping the table out for skeletons on every keystroke.
+  useEffect(() => {
+    if (forceLoading || !didInitialLoad.current || lastFilterKey.current === filterKey) return
+    lastFilterKey.current = filterKey
+    setActiveQuery(query)
+    void reload(0, size, query, field, sortKey, direction, exactMatch, { silent: true })
+  }, [direction, exactMatch, field, filterKey, forceLoading, query, reload, size, sortKey])
+
+  useEffect(() => {
+    if (!highlightId || forceLoading) return
+    rowRefs.current.get(highlightId)?.scrollIntoView({
+      block: 'center',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    })
+  }, [data, forceLoading, highlightId])
+
   const onSearchChange = (value: string) => {
     setQuery(value)
+    if (!value.trim()) setExactMatch(false)
+    setRefreshing(true)
+    ++requestVersion.current
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => {
       setActiveQuery(value)
-      void reload(0, size, value, field, sortKey, direction, { silent: true })
+      void reload(0, size, value, field, sortKey, direction, value.trim() ? exactMatch : false, { silent: true })
     }, 300)
   }
 
   const onFieldChange = (next: string) => {
     setField(next)
-    if (activeQuery.trim()) {
-      void reload(0, size, activeQuery, next, sortKey, direction, { silent: true })
+    setActiveQuery(query)
+    void reload(0, size, query, next, sortKey, direction, exactMatch, { silent: true })
+  }
+
+  const returnToPagination = () => {
+    topPaginationRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+    topPaginationRef.current?.focus({ preventScroll: true })
+  }
+
+  const onSizeChange = async (next: number, fromBottom = false) => {
+    if (await reload(0, next, activeQuery, field, sortKey, direction, exactMatch)) {
+      if (fromBottom) returnToPagination()
     }
   }
 
-  const onSizeChange = (next: number) => {
-    setSize(next)
-    void reload(0, next, activeQuery, field, sortKey, direction)
+  const onPageChange = async (next: number, fromBottom = false) => {
+    if (await reload(next, size, activeQuery, field, sortKey, direction, exactMatch)) {
+      if (fromBottom) returnToPagination()
+    }
   }
 
   const onSort = (column: Column<T>) => {
@@ -377,17 +499,27 @@ export function DataTab<T>({
       : column.initialSortDirection ?? 'asc'
     setSortKey(column.sortKey)
     setDirection(nextDirection)
-    void reload(0, size, activeQuery, field, column.sortKey, nextDirection, { silent: true })
+    setActiveQuery(query)
+    void reload(0, size, query, field, column.sortKey, nextDirection, exactMatch, { silent: true })
   }
 
   const searching = activeQuery.trim().length > 0
-  const showLoading = forceLoading || loading
+  const busy = forceLoading || loading || refreshing
+  const showLoading = forceLoading || ((loading || refreshing) && data === null)
   const rows = data?.content ?? []
   const visibleColumns = columns.filter((column) => visibleColumnKeys.has(column.key))
   const columnCount = visibleColumns.length + (expand ? 1 : 0) + (locate ? 1 : 0) + (canEdit ? 1 : 0)
   const firstRow = rows[0]
   const roomName = roomAccessor && firstRow ? roomAccessor(firstRow) : null
   const searchableColumns = columns.filter((c) => c.searchKey)
+  const tableWidth = visibleColumns.reduce(
+    (sum, column) => sum + (columnWidths[column.key] ?? column.defaultWidth),
+    (expand ? 40 : 0) + (locate ? 48 : 0) + (canEdit ? 64 : 0),
+  )
+  const paginationProps = {
+    page, size, rowCount: rows.length, totalElements: data?.totalElements,
+    totalPages: data?.totalPages, loading: busy,
+  }
 
   const toggleColumn = (key: string) => {
     setVisibleColumnKeys((previous) => {
@@ -396,6 +528,11 @@ export function DataTab<T>({
         if (next.size > 1) next.delete(key)
       } else {
         next.add(key)
+      }
+      try {
+        localStorage.setItem(columnVisibilityStorageKey, JSON.stringify([...next]))
+      } catch {
+        // Keep the current selection when storage is unavailable.
       }
       return next
     })
@@ -415,7 +552,7 @@ export function DataTab<T>({
     if (!confirm('Delete this row? This action cannot be undone.')) return
     try {
       await onDelete(row)
-      await reload(page, size, activeQuery, field, sortKey, direction)
+      await reload(page, size, activeQuery, field, sortKey, direction, exactMatch)
     } catch {
       onError('Failed to delete row.')
     }
@@ -430,7 +567,8 @@ export function DataTab<T>({
       if (searchTimer.current) clearTimeout(searchTimer.current)
       setQuery('')
       setActiveQuery('')
-      await reload(targetPage, size, '', field, sortKey, direction)
+      setExactMatch(false)
+      if (!await reload(targetPage, size, '', field, sortKey, direction, false)) return
       setHighlightId(id)
       if (highlightTimer.current) clearTimeout(highlightTimer.current)
       highlightTimer.current = setTimeout(() => setHighlightId(null), 3000)
@@ -442,16 +580,16 @@ export function DataTab<T>({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          {roomAccessor &&
+    <div className="data-tab flex min-w-0 flex-col gap-2 sm:gap-3">
+      <div className="data-toolbar flex flex-wrap items-center gap-2 sm:justify-between">
+        <div className="data-search flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          {roomAccessor && (roomName || showLoading) &&
             (roomName ? (
-              <Badge variant="outline" className="h-6 min-w-32 font-normal">
+              <Badge variant="outline" className="room-badge h-6 max-w-full font-normal whitespace-normal wrap-anywhere">
                 Room: {roomName}
               </Badge>
             ) : (
-              <Badge variant="outline" className="h-6 min-w-32 font-normal">
+              <Badge variant="outline" className="room-badge h-6 max-w-full font-normal whitespace-normal wrap-anywhere">
                 <Skeleton className="h-3 w-20" />
               </Badge>
             ))}
@@ -464,7 +602,7 @@ export function DataTab<T>({
               value={field}
               onValueChange={(v) => v && onFieldChange(v)}
             >
-              <SelectTrigger size="sm" className="h-7 w-[150px]">
+              <SelectTrigger size="sm" className="search-field h-7 w-[130px]" aria-label="Search column">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -477,9 +615,10 @@ export function DataTab<T>({
               </SelectContent>
             </Select>
           )}
-          <div className="relative w-full sm:w-56">
+          <div className="search-input relative min-w-0 flex-1 sm:w-56 sm:flex-none">
             <Input
               className="h-7 w-full pr-7"
+              aria-label="Search all rows"
               placeholder="Search all rows…"
               value={query}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -496,8 +635,21 @@ export function DataTab<T>({
               {data.totalElements} match{data.totalElements === 1 ? '' : 'es'} across all rows
             </span>
           )}
+          <label className="flex min-h-11 items-center gap-2 text-xs text-muted-foreground sm:min-h-8">
+            <Switch
+              checked={exactMatch}
+              disabled={!query.trim()}
+              onCheckedChange={(exact) => {
+                setExactMatch(exact)
+                setActiveQuery(query)
+                void reload(0, size, query, field, sortKey, direction, exact, { silent: true })
+              }}
+            />
+            Exact match
+          </label>
+          {toolbarFilters}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="data-refresh flex items-center gap-1">
           <Popover>
             <PopoverTrigger
               render={
@@ -507,43 +659,86 @@ export function DataTab<T>({
                 </Button>
               }
             />
-            <PopoverContent side="bottom" align="end" className="w-56 p-2">
-              <div className="grid gap-1">
+            <PopoverContent side="bottom" align="end" className="w-80 max-w-[calc(100vw-1rem)] p-2">
+              <div className="grid max-h-[60dvh] gap-1 overflow-y-auto">
                 {columns.map((column) => {
                   const checked = visibleColumnKeys.has(column.key)
                   return (
-                    <label
-                      key={column.key}
-                      className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                    >
-                      <span>{column.label}</span>
+                    <div key={column.key} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                      <span className="min-w-0 flex-1 truncate">{column.label}</span>
+                      <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                        <Input
+                          type="number" inputMode="numeric" min={MIN_COLUMN_WIDTH} max={MAX_COLUMN_WIDTH} step={1}
+                          className="h-7 w-20 text-right text-foreground"
+                          aria-label={`${column.label} width in pixels`}
+                          value={columnWidthDrafts[column.key] ?? Math.round(columnWidths[column.key] ?? column.defaultWidth).toString()}
+                          onChange={(event) => setColumnWidthDrafts((previous) => ({ ...previous, [column.key]: event.target.value }))}
+                          onBlur={() => setExactColumnWidth(column)}
+                          onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
+                        />
+                        px
+                      </label>
                       <Switch
+                        aria-label={`Show ${column.label} column`}
                         checked={checked}
                         disabled={checked && visibleColumnKeys.size === 1}
                         onCheckedChange={() => toggleColumn(column.key)}
                       />
-                    </label>
+                    </div>
                   )
                 })}
+                <Button variant="ghost" size="sm" className="justify-start" disabled={!hasCustomColumnWidths} onClick={resetColumnWidths}>Reset column widths</Button>
               </div>
             </PopoverContent>
           </Popover>
           <Button
             variant="ghost"
             size="sm"
-            disabled={showLoading || refreshing}
-            onClick={() => reload(page, size, activeQuery, field, sortKey, direction, { silent: true })}
+            disabled={busy}
+            onClick={() => reload(page, size, activeQuery, field, sortKey, direction, exactMatch, { silent: true })}
           >
-            <RotateCw className={showLoading || refreshing ? 'animate-spin' : ''} />
+            <RotateCw className={busy ? 'animate-spin' : ''} />
             Refresh
           </Button>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border">
+      <div className="data-toolbar flex items-center gap-2 min-[1100px]:hidden">
+        <Select
+          items={Object.fromEntries(columns.map((column) => [column.key, column.label]))}
+          value={columns.find((column) => column.sortKey === sortKey)?.key}
+          onValueChange={(key) => { const column = columns.find((item) => item.key === key); if (column) onSort(column) }}
+        >
+          <SelectTrigger aria-label="Sort column" className="min-w-0 flex-1"><SelectValue /></SelectTrigger>
+          <SelectContent>{columns.map((column) => <SelectItem key={column.key} value={column.key}>{column.label}</SelectItem>)}</SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={() => { const column = columns.find((item) => item.sortKey === sortKey); if (column) onSort(column) }}>
+          {direction === 'asc' ? <ArrowUp /> : <ArrowDown />}{direction === 'asc' ? 'Ascending' : 'Descending'}
+        </Button>
+      </div>
+      {loadError && (
+        <div className="data-toolbar flex items-center gap-2 text-sm" role="status">
+          Could not load records.
+          <Button variant="outline" size="sm" onClick={() => reload(page, size, activeQuery, field, sortKey, direction, exactMatch)}>
+            Retry
+          </Button>
+        </div>
+      )}
+      <DataPagination
+        {...paginationProps}
+        position="top"
+        paginationRef={topPaginationRef}
+        onPageChange={(next) => void onPageChange(next)}
+        onSizeChange={(next) => void onSizeChange(next)}
+      />
+
+      <div className="data-table-frame min-w-0 overflow-hidden rounded-lg border" aria-busy={busy}>
         <Table
           ref={tableRef}
-          className="min-w-[720px] table-fixed [&_td]:py-1.5 [&_th]:h-9 [&_tr]:border-border/50"
+          data-column-layout-key={columnWidthsKey}
+          data-column-widths-storage-key={columnWidthsStorageKey}
+          style={{ width: `max(100%, ${tableWidth}px)` }}
+          className="mobile-records min-w-[720px] table-fixed [&_td]:py-1.5 [&_th]:h-9 [&_tr]:border-border/50"
         >
           <TableHeader>
             <TableRow className="bg-muted/40">
@@ -554,6 +749,7 @@ export function DataTab<T>({
                   <TableHead
                     key={c.key}
                     data-column-key={c.key}
+                    data-column-label={c.label}
                     className={cn('relative', c.headClassName)}
                     style={{ width: columnWidths[c.key] ?? c.defaultWidth }}
                     aria-sort={sortKey === c.sortKey ? (direction === 'asc' ? 'ascending' : 'descending') : undefined}
@@ -578,7 +774,12 @@ export function DataTab<T>({
                         aria-valuemax={MAX_COLUMN_WIDTH}
                         aria-valuenow={columnWidths[c.key] ?? c.defaultWidth}
                         tabIndex={0}
-                        title="Drag to resize"
+                        title="Drag or use arrow keys to resize. Double-click or press Home to reset this boundary."
+                        onDoubleClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          resetColumnBoundary(c.key, nextColumn.key)
+                        }}
                         className={cn(
                           'absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize touch-none outline-none',
                           'before:absolute before:inset-y-2 before:left-1/2 before:w-px before:bg-border/70',
@@ -597,16 +798,16 @@ export function DataTab<T>({
                 )
               })}
               {locate && <TableHead className="w-[48px]" />}
-              {canEdit && <TableHead className="w-[64px] pr-4 text-right">Actions</TableHead>}
+              {canEdit && <TableHead className="w-[64px] bg-muted pr-4 text-right min-[1100px]:sticky min-[1100px]:right-0 min-[1100px]:z-20 min-[1100px]:border-l">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {showLoading &&
               Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`} className="h-[33px] hover:bg-transparent">
-                  {expand && <TableCell className="w-[40px]" />}
+                <TableRow key={`skeleton-${i}`} className="record-row h-[33px] hover:bg-transparent" aria-hidden="true">
+                  {expand && <TableCell className="record-toggle w-[40px]" />}
                   {visibleColumns.map((c, idx) => (
-                    <TableCell key={c.key} className={c.cellClassName}>
+                    <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} className={c.cellClassName}>
                       <Skeleton
                         className={cn(
                           'h-4',
@@ -618,7 +819,7 @@ export function DataTab<T>({
                   ))}
                   {locate && <TableCell />}
                   {canEdit && (
-                    <TableCell className="pr-4 text-right">
+                    <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1100px]:sticky min-[1100px]:right-0 min-[1100px]:z-10 min-[1100px]:border-l">
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -639,23 +840,30 @@ export function DataTab<T>({
                 const isExpanded = expandedIds.has(id)
                 return (
                   <Fragment key={id}>
-                    <TableRow className={cn('h-[33px]', highlightId === id && 'bg-primary/10')}>
+                    <TableRow
+                      ref={(element) => {
+                        if (element) rowRefs.current.set(id, element)
+                        else rowRefs.current.delete(id)
+                      }}
+                      className={cn('record-row group h-[33px]', highlightId === id && 'bg-primary/10')}
+                    >
                       {expand && (
-                        <TableCell className="w-[40px]">
+                        <TableCell className="record-toggle w-[40px]">
                           <Button
                             variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-foreground"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground min-[1100px]:size-7 min-[1100px]:p-0"
                             aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
                             aria-expanded={isExpanded}
                             onClick={() => toggleExpanded(id)}
                           >
                             {isExpanded ? <ChevronDown /> : <ChevronRight />}
+                            <span className="min-[1100px]:hidden">Details</span>
                           </Button>
                         </TableCell>
                       )}
                       {visibleColumns.map((c) => (
-                        <TableCell key={c.key} className={c.cellClassName}>
+                        <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} className={c.cellClassName}>
                           <OverflowPreviewTrigger
                             handle={overflowPreviewHandle}
                             fallbackText={c.value(row)}
@@ -665,7 +873,7 @@ export function DataTab<T>({
                         </TableCell>
                       ))}
                       {locate && (
-                        <TableCell className="text-right">
+                        <TableCell className="record-locate text-right" data-active={searching || undefined}>
                           {searching && (
                             <Button
                               variant="ghost"
@@ -682,12 +890,13 @@ export function DataTab<T>({
                         </TableCell>
                       )}
                       {canEdit && (
-                        <TableCell className="pr-4 text-right">
+                        <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1100px]:sticky min-[1100px]:right-0 min-[1100px]:z-10 min-[1100px]:border-l">
                           <Button
                             variant="ghost"
                             size="icon-sm"
                             className="text-muted-foreground hover:text-destructive"
                             aria-label="Delete row"
+                            disabled={busy}
                             onClick={() => remove(row)}
                           >
                             <Trash2 />
@@ -696,9 +905,9 @@ export function DataTab<T>({
                       )}
                     </TableRow>
                     {expand && isExpanded && (
-                      <TableRow className="hover:bg-transparent">
+                      <TableRow className="record-detail hover:bg-transparent">
                         <TableCell colSpan={columnCount} className="bg-muted/20 p-0">
-                          <div className="px-4 py-3">{expand(row)}</div>
+                          <div className="min-w-0 px-2 py-2 wrap-anywhere sm:px-4 sm:py-3">{expand(row)}</div>
                         </TableCell>
                       </TableRow>
                     )}
@@ -707,7 +916,7 @@ export function DataTab<T>({
               })}
 
             {!showLoading && rows.length === 0 && (
-              <TableRow>
+              <TableRow className="record-empty">
                 <TableCell
                   colSpan={columnCount}
                   className="h-20 text-center text-muted-foreground"
@@ -720,48 +929,12 @@ export function DataTab<T>({
         </Table>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <span>{data ? `${data.totalElements} total` : ''}</span>
-          <span className="text-border">·</span>
-          <span>Rows per page</span>
-          <Select
-            items={Object.fromEntries(PAGE_SIZES.map((s) => [String(s), String(s)]))}
-            value={String(size)}
-            onValueChange={(v) => v && onSizeChange(Number(v))}
-          >
-            <SelectTrigger size="sm" className="h-7 w-[72px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZES.map((s) => (
-                <SelectItem key={s} value={String(s)}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={showLoading || page <= 0}
-            onClick={() => reload(page - 1, size, activeQuery, field, sortKey, direction)}
-          >
-            Previous
-          </Button>
-          <span>Page {page + 1} of {Math.max(data?.totalPages ?? 1, 1)}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={showLoading || !data || page + 1 >= data.totalPages}
-            onClick={() => reload(page + 1, size, activeQuery, field, sortKey, direction)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <DataPagination
+        {...paginationProps}
+        position="bottom"
+        onPageChange={(next) => void onPageChange(next, true)}
+        onSizeChange={(next) => void onSizeChange(next, true)}
+      />
 
       <PreviewCard.Root handle={overflowPreviewHandle}>
         {({ payload }) => {
@@ -804,7 +977,10 @@ function OverflowPreviewTrigger({
       if (!trigger) return false
       const cell = trigger.closest<HTMLElement>('[data-slot="table-cell"]')
       if (hasOverflow(trigger) || (cell && hasOverflow(cell))) return true
-      return [...trigger.querySelectorAll<HTMLElement>('*')].some(hasOverflow)
+      return [...trigger.querySelectorAll<HTMLElement>('*')].some((element) => {
+        const style = getComputedStyle(element)
+        return (style.overflowX !== 'visible' || style.overflowY !== 'visible') && hasOverflow(element)
+      })
     },
   }
 
@@ -817,7 +993,7 @@ function OverflowPreviewTrigger({
       render={
         <div
           ref={triggerRef}
-          className="block min-w-0 max-w-full truncate outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="overflow-preview block min-w-0 max-w-full truncate outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       }
     >

@@ -2,12 +2,16 @@ package org.taonity.fullstackstarter.console.service
 
 import org.taonity.fullstackstarter.config.AppSettings
 import org.taonity.fullstackstarter.console.dto.AuditLogDto
+import org.taonity.fullstackstarter.console.dto.AuditLogDateRangeDto
 import org.taonity.fullstackstarter.console.dto.PageResponse
 import org.taonity.fullstackstarter.console.repository.AuditLogRepository
 import org.taonity.fullstackstarter.security.principal.GoogleUserPrincipal
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import java.time.LocalDate
+import java.time.ZoneOffset
+import org.taonity.fullstackstarter.console.exception.ConsoleValidationException
 
 @Service
 class ConsoleDataService(
@@ -15,6 +19,15 @@ class ConsoleDataService(
     private val accessGuard: AccessGuard,
     private val settings: AppSettings,
 ) {
+    fun auditLogDateRange(principal: GoogleUserPrincipal): AuditLogDateRangeDto {
+        accessGuard.requireAdmin(principal)
+        val range = auditLogRepository.dateRange()
+        return AuditLogDateRangeDto(
+            range.earliest?.atZone(ZoneOffset.UTC)?.toLocalDate(),
+            range.latest?.atZone(ZoneOffset.UTC)?.toLocalDate(),
+        )
+    }
+
     fun listAuditLogs(
         principal: GoogleUserPrincipal,
         q: String?,
@@ -23,8 +36,17 @@ class ConsoleDataService(
         direction: String,
         page: Int,
         size: Int,
+        exact: Boolean = false,
+        startDate: LocalDate? = null,
+        endDate: LocalDate? = null,
     ): PageResponse<AuditLogDto> {
         accessGuard.requireAdmin(principal)
+        if (startDate != null && endDate != null && startDate > endDate) {
+            throw ConsoleValidationException("Start date must not be after end date.")
+        }
+        if (listOfNotNull(startDate, endDate).any { it.year !in 1..9999 }) {
+            throw ConsoleValidationException("Dates must use years between 0001 and 9999.")
+        }
         val sortProperty = AUDIT_SORT_FIELDS[sort] ?: "occurredAt"
         val sortDirection = if (direction.equals("asc", ignoreCase = true)) Sort.Direction.ASC else Sort.Direction.DESC
         val pageable = PageRequest.of(
@@ -32,10 +54,15 @@ class ConsoleDataService(
             size.coerceIn(1, settings.console().maxPageSize),
             Sort.by(sortDirection, sortProperty).and(Sort.by(Sort.Direction.DESC, "id")),
         )
-        val result = if (q.isNullOrBlank()) {
+        val result = if (q.isNullOrBlank() && startDate == null && endDate == null) {
             auditLogRepository.findAll(pageable)
         } else {
-            auditLogRepository.search(q.trim(), field.orAllField(), pageable)
+            auditLogRepository.search(
+                q?.trim().orEmpty(), field.orAllField(), exact,
+                startDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant(),
+                endDate?.plusDays(1)?.atStartOfDay(ZoneOffset.UTC)?.toInstant(),
+                pageable,
+            )
         }
         return PageResponse.of(result, AuditLogDto::from)
     }

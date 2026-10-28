@@ -25,8 +25,8 @@ export default function RootLayout({
           {themeInitScript}
         </Script>
         <ThemeProvider>
-          <ThemeToggle className="fixed right-3 top-3 z-50" />
-          <main>{children}</main>
+          <ThemeToggle className="absolute right-3 top-2 z-50 min-h-11 min-w-11 sm:top-3 sm:min-h-0 sm:min-w-0" />
+          {children}
           <DevToolsPanel />
         </ThemeProvider>
       </body>
