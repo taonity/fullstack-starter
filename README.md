@@ -84,9 +84,51 @@ See [Deployment](docs/DEPLOYMENT.md) for production configuration and Compose re
 ### PostgreSQL database ERD diagram
 
 <!-- mermerd-start -->
-
 ```mermaid
 erDiagram
-```
+    app_user {
+        character_varying access_status "{NOT_NULL}"
+        character_varying display_name "{NOT_NULL}"
+        character_varying email "{NOT_NULL}"
+        character_varying google_id PK "{NOT_NULL}"
+        character_varying picture_url 
+        character_varying requested_role 
+        character_varying role "{NOT_NULL}"
+    }
 
+    audit_log {
+        character_varying action "{NOT_NULL}"
+        character_varying actor_email "{NOT_NULL}"
+        character_varying actor_google_id "{NOT_NULL}"
+        character_varying id PK "{NOT_NULL}"
+        timestamp_without_time_zone occurred_at "{NOT_NULL}"
+        character_varying target_id 
+        character_varying target_type "{NOT_NULL}"
+    }
+
+    config_override {
+        character_varying config_key PK "{NOT_NULL}"
+        timestamp_without_time_zone updated_at "{NOT_NULL}"
+        character_varying updated_by "{NOT_NULL}"
+        character_varying value_json "{NOT_NULL}"
+    }
+
+    spring_session {
+        bigint creation_time "{NOT_NULL}"
+        bigint expiry_time "{NOT_NULL}"
+        bigint last_access_time "{NOT_NULL}"
+        integer max_inactive_interval "{NOT_NULL}"
+        character primary_id PK "{NOT_NULL}"
+        character_varying principal_name 
+        character session_id "{NOT_NULL}"
+    }
+
+    spring_session_attributes {
+        bytea attribute_bytes "{NOT_NULL}"
+        character_varying attribute_name PK "{NOT_NULL}"
+        character session_primary_id PK,FK "{NOT_NULL}"
+    }
+
+    spring_session_attributes }o--|| spring_session : "session_primary_id"
+```
 <!-- mermerd-end -->
