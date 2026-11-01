@@ -11,7 +11,7 @@ plugins {
 }
 
 dependencies {
-    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.6"))
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.2"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -27,7 +27,7 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("org.aspectj:aspectjweaver")
 
-    implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
+    implementation("io.github.oshai:kotlin-logging-jvm:7.0.14")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("tools.jackson.module:jackson-module-kotlin")
@@ -35,9 +35,9 @@ dependencies {
     implementation("com.h2database:h2")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
-    implementation("com.github.gavlyukovskiy:datasource-proxy-spring-boot-starter:2.0.0")
+    implementation("com.github.gavlyukovskiy:datasource-proxy-spring-boot-starter:2.0.1")
 
-    implementation("com.google.apis:google-api-services-oauth2:v2-rev20200213-2.0.0")
+    implementation("com.google.apis:google-api-services-oauth2:v2-rev20200213-2.9.2")
     implementation("org.wiremock:wiremock-standalone:3.13.2")
     implementation(project(":google-stubs"))
 
