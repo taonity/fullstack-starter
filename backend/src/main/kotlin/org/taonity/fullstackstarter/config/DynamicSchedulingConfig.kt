@@ -2,6 +2,7 @@ package org.taonity.fullstackstarter.config
 
 import org.taonity.fullstackstarter.console.service.AuditLogCleanupService
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
 import org.springframework.scheduling.Trigger
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.SchedulingConfigurer
@@ -9,6 +10,7 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar
 import org.springframework.scheduling.support.CronTrigger
 
 @Configuration
+@Profile("!demo")
 @EnableScheduling
 class DynamicSchedulingConfig(
     private val settings: AppSettings,

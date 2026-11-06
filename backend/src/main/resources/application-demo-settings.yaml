@@ -1,0 +1,40 @@
+server:
+  servlet:
+    session:
+      cookie:
+        domain: 127.0.0.1
+        name: JSESSIONID-DEMO
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:fullstack-demo;DB_CLOSE_DELAY=-1
+  flyway:
+    clean-disabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          stub-guest:
+            provider: google-stub-guest
+            client-id: stub-google-client-id
+            client-secret: stub-google-client-secret
+            redirect-uri: http://127.0.0.1:8080/login/oauth2/code/stub-guest
+            authorization-grant-type: authorization_code
+            scope: profile,email
+        provider:
+          google-stub-guest:
+            authorization-uri: http://127.0.0.1:9561/oauth2/authorize
+            token-uri: http://127.0.0.1:9561/oauth2/token
+            user-info-uri: http://127.0.0.1:9561/oauth2/v3/userinfo/guest
+            user-name-attribute: sub
+
+app:
+  additional-profiles: ""
+  csrf-cookie-name: XSRF-TOKEN-LOCAL
+  cookie:
+    secure: false
+  console:
+    owner-emails: alice.morgan@example.com
+    admin-emails: ""
+  dev:
+    stub-logins: []

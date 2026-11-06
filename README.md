@@ -79,6 +79,7 @@ See [Deployment](docs/DEPLOYMENT.md) for production configuration and Compose re
 - [Add or change an OAuth2 provider](docs/ADD_OAUTH2_PROVIDER.md)
 - [Database and migrations](docs/DATABASE.md)
 - [Testing](docs/TESTING.md)
+- [Demo screenshots](docs/DEMO_SCREENSHOTS.md)
 - [Deployment](docs/DEPLOYMENT.md)
 
 ### PostgreSQL database ERD diagram
