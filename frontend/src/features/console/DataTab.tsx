@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/table'
 import type { PageResponse } from './types'
 import { DataPagination } from './DataPagination'
+import { MobileRecordHeading } from './MobileRecordHeading'
 
 export type Column<T> = {
   key: string
@@ -54,12 +55,15 @@ export type Column<T> = {
   initialSortDirection?: 'asc' | 'desc'
   defaultVisible?: boolean
   mobileContent?: boolean
+  mobileCompact?: boolean
+  mobilePrimary?: boolean
 }
 
 type DataTabProps<T> = {
   columns: Column<T>[]
   columnWidthsKey: string
   rowKey: (row: T) => string
+  showRowNumbers?: boolean
   load: (page: number, size: number, q?: string, field?: string, sort?: string, direction?: string, exact?: boolean) => Promise<PageResponse<T>>
   /** Resolves the page index where a searched row lives in the unfiltered list, enabling the jump action. */
   locate?: (row: T, size: number, direction?: string) => Promise<number>
@@ -110,6 +114,7 @@ export function DataTab<T>({
   columns,
   columnWidthsKey,
   rowKey,
+  showRowNumbers = false,
   load,
   locate,
   expand,
@@ -508,13 +513,14 @@ export function DataTab<T>({
   const showLoading = forceLoading || ((loading || refreshing) && data === null)
   const rows = data?.content ?? []
   const visibleColumns = columns.filter((column) => visibleColumnKeys.has(column.key))
-  const columnCount = visibleColumns.length + (expand ? 1 : 0) + (locate ? 1 : 0) + (canEdit ? 1 : 0)
+  const primaryColumn = visibleColumns.find(column => column.mobilePrimary) ?? visibleColumns[0]
+  const columnCount = visibleColumns.length + (showRowNumbers ? 1 : 0) + (expand ? 1 : 0) + (locate ? 1 : 0) + (canEdit ? 1 : 0)
   const firstRow = rows[0]
   const roomName = roomAccessor && firstRow ? roomAccessor(firstRow) : null
   const searchableColumns = columns.filter((c) => c.searchKey)
   const tableWidth = visibleColumns.reduce(
     (sum, column) => sum + (columnWidths[column.key] ?? column.defaultWidth),
-    (expand ? 40 : 0) + (locate ? 48 : 0) + (canEdit ? 64 : 0),
+    (showRowNumbers ? 56 : 0) + (expand ? 40 : 0) + (locate ? 48 : 0) + (canEdit ? 64 : 0),
   )
   const paginationProps = {
     page, size, rowCount: rows.length, totalElements: data?.totalElements,
@@ -635,8 +641,9 @@ export function DataTab<T>({
               {data.totalElements} match{data.totalElements === 1 ? '' : 'es'} across all rows
             </span>
           )}
-          <label className="flex min-h-11 items-center gap-2 text-xs text-muted-foreground sm:min-h-8">
+          <label className="flex min-h-9 items-center gap-1.5 text-xs text-muted-foreground sm:min-h-8">
             <Switch
+              aria-label="Exact match"
               checked={exactMatch}
               disabled={!query.trim()}
               onCheckedChange={(exact) => {
@@ -645,17 +652,28 @@ export function DataTab<T>({
                 void reload(0, size, query, field, sortKey, direction, exact, { silent: true })
               }}
             />
-            Exact match
+            <span>Exact<span className="hidden sm:inline"> match</span></span>
           </label>
           {toolbarFilters}
         </div>
-        <div className="data-refresh flex items-center gap-1">
+        <div className="data-actions flex items-center gap-1">
+          <Select items={Object.fromEntries(columns.map(column => [column.key, column.label]))}
+            value={columns.find(column => column.sortKey === sortKey)?.key}
+            onValueChange={key => { const column = columns.find(column => column.key === key); if (column && column.sortKey !== sortKey) onSort(column) }}>
+            <SelectTrigger size="sm" aria-label="Sort column" className="h-7 w-32 lg:hidden"><SelectValue /></SelectTrigger>
+            <SelectContent>{columns.map(column => <SelectItem key={column.key} value={column.key}>{column.label}</SelectItem>)}</SelectContent>
+          </Select>
+          <Button variant="ghost" size="icon-sm" className="lg:hidden" disabled={busy}
+            aria-label={`Sort ${direction === 'asc' ? 'descending' : 'ascending'}`}
+            onClick={() => { const column = columns.find(column => column.sortKey === sortKey); if (column) onSort(column) }}>
+            {direction === 'asc' ? <ArrowUp /> : <ArrowDown />}
+          </Button>
           <Popover>
             <PopoverTrigger
               render={
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" aria-label="Choose columns" title="Choose columns">
                   <Columns3 />
-                  Columns
+                  <span className="hidden sm:inline">Columns</span>
                 </Button>
               }
             />
@@ -695,27 +713,15 @@ export function DataTab<T>({
             variant="ghost"
             size="sm"
             disabled={busy}
+            aria-label="Refresh data" title="Refresh data"
             onClick={() => reload(page, size, activeQuery, field, sortKey, direction, exactMatch, { silent: true })}
           >
             <RotateCw className={busy ? 'animate-spin' : ''} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
       </div>
 
-      <div className="data-toolbar flex items-center gap-2 min-[1100px]:hidden">
-        <Select
-          items={Object.fromEntries(columns.map((column) => [column.key, column.label]))}
-          value={columns.find((column) => column.sortKey === sortKey)?.key}
-          onValueChange={(key) => { const column = columns.find((item) => item.key === key); if (column) onSort(column) }}
-        >
-          <SelectTrigger aria-label="Sort column" className="min-w-0 flex-1"><SelectValue /></SelectTrigger>
-          <SelectContent>{columns.map((column) => <SelectItem key={column.key} value={column.key}>{column.label}</SelectItem>)}</SelectContent>
-        </Select>
-        <Button variant="outline" size="sm" onClick={() => { const column = columns.find((item) => item.sortKey === sortKey); if (column) onSort(column) }}>
-          {direction === 'asc' ? <ArrowUp /> : <ArrowDown />}{direction === 'asc' ? 'Ascending' : 'Descending'}
-        </Button>
-      </div>
       {loadError && (
         <div className="data-toolbar flex items-center gap-2 text-sm" role="status">
           Could not load records.
@@ -743,6 +749,7 @@ export function DataTab<T>({
           <TableHeader>
             <TableRow className="bg-muted/40">
               {expand && <TableHead className="w-[40px]" />}
+              {showRowNumbers && <TableHead className="w-14 text-right" title="Position in the current sorting">#</TableHead>}
               {visibleColumns.map((c, index) => {
                 const nextColumn = visibleColumns[index + 1]
                 return (
@@ -798,16 +805,18 @@ export function DataTab<T>({
                 )
               })}
               {locate && <TableHead className="w-[48px]" />}
-              {canEdit && <TableHead className="w-[64px] bg-muted pr-4 text-right min-[1100px]:sticky min-[1100px]:right-0 min-[1100px]:z-20 min-[1100px]:border-l">Actions</TableHead>}
+              {canEdit && <TableHead className="w-[64px] bg-muted pr-4 text-right min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-20 min-[1024px]:border-l">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {showLoading &&
               Array.from({ length: SKELETON_ROWS }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`} className="record-row h-[33px] hover:bg-transparent" aria-hidden="true">
+                  <MobileRecordHeading label="Loading record"><Skeleton className="h-4 w-28" /></MobileRecordHeading>
                   {expand && <TableCell className="record-toggle w-[40px]" />}
+                  {showRowNumbers && <TableCell className="record-number text-right"><Skeleton className="ml-auto h-4 w-5" /></TableCell>}
                   {visibleColumns.map((c, idx) => (
-                    <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} className={c.cellClassName}>
+                    <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} data-compact={c.mobileCompact || undefined} data-primary={c.key === primaryColumn?.key || undefined} className={c.cellClassName}>
                       <Skeleton
                         className={cn(
                           'h-4',
@@ -819,7 +828,7 @@ export function DataTab<T>({
                   ))}
                   {locate && <TableCell />}
                   {canEdit && (
-                    <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1100px]:sticky min-[1100px]:right-0 min-[1100px]:z-10 min-[1100px]:border-l">
+                    <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-10 min-[1024px]:border-l">
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -835,7 +844,7 @@ export function DataTab<T>({
               ))}
 
             {!showLoading &&
-              rows.map((row) => {
+              rows.map((row, index) => {
                 const id = rowKey(row)
                 const isExpanded = expandedIds.has(id)
                 return (
@@ -847,23 +856,37 @@ export function DataTab<T>({
                       }}
                       className={cn('record-row group h-[33px]', highlightId === id && 'bg-primary/10')}
                     >
+                      {primaryColumn && (
+                        <MobileRecordHeading label={primaryColumn.label} rank={showRowNumbers ? page * size + index + 1 : undefined}
+                          actions={expand || canEdit || (locate && searching) ? <>
+                            {expand && <Button variant="ghost" size="icon-sm" aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+                              aria-expanded={isExpanded} onClick={() => toggleExpanded(id)}>{isExpanded ? <ChevronDown /> : <ChevronRight />}</Button>}
+                            {locate && searching && <Button variant="ghost" size="icon-sm" aria-label="Jump to this row"
+                              disabled={jumpingId === id} onClick={() => jumpTo(row)}><ArrowRightToLine /></Button>}
+                            {canEdit && <Button variant="ghost" size="icon-sm" aria-label="Delete row" disabled={busy}
+                              className="text-muted-foreground hover:text-destructive" onClick={() => remove(row)}><Trash2 /></Button>}
+                          </> : undefined}>
+                          {primaryColumn.render ? primaryColumn.render(row) : primaryColumn.value(row)}
+                        </MobileRecordHeading>
+                      )}
                       {expand && (
                         <TableCell className="record-toggle w-[40px]">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-foreground min-[1100px]:size-7 min-[1100px]:p-0"
+                            className="text-muted-foreground hover:text-foreground min-[1024px]:size-7 min-[1024px]:p-0"
                             aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
                             aria-expanded={isExpanded}
                             onClick={() => toggleExpanded(id)}
                           >
                             {isExpanded ? <ChevronDown /> : <ChevronRight />}
-                            <span className="min-[1100px]:hidden">Details</span>
+                            <span className="min-[1024px]:hidden">Details</span>
                           </Button>
                         </TableCell>
                       )}
+                      {showRowNumbers && <TableCell className="record-number text-right font-mono text-xs text-muted-foreground">{(page * size + index + 1).toLocaleString()}</TableCell>}
                       {visibleColumns.map((c) => (
-                        <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} className={c.cellClassName}>
+                        <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} data-compact={c.mobileCompact || undefined} data-primary={c.key === primaryColumn?.key || undefined} className={c.cellClassName}>
                           <OverflowPreviewTrigger
                             handle={overflowPreviewHandle}
                             fallbackText={c.value(row)}
@@ -890,7 +913,7 @@ export function DataTab<T>({
                         </TableCell>
                       )}
                       {canEdit && (
-                        <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1100px]:sticky min-[1100px]:right-0 min-[1100px]:z-10 min-[1100px]:border-l">
+                        <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-10 min-[1024px]:border-l">
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -907,7 +930,7 @@ export function DataTab<T>({
                     {expand && isExpanded && (
                       <TableRow className="record-detail hover:bg-transparent">
                         <TableCell colSpan={columnCount} className="bg-muted/20 p-0">
-                          <div className="min-w-0 px-2 py-2 wrap-anywhere sm:px-4 sm:py-3">{expand(row)}</div>
+                          <div className="record-detail-content min-w-0 px-2 py-2 wrap-anywhere sm:px-4 sm:py-3">{expand(row)}</div>
                         </TableCell>
                       </TableRow>
                     )}
@@ -973,6 +996,7 @@ function OverflowPreviewTrigger({
   const payload: OverflowPreviewPayload = {
     getText: () => triggerRef.current?.innerText.trim() || fallbackText,
     isOverflowing: () => {
+      if (window.matchMedia('(width < 1024px)').matches) return false
       const trigger = triggerRef.current
       if (!trigger) return false
       const cell = trigger.closest<HTMLElement>('[data-slot="table-cell"]')

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { MessageSquare, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -63,18 +64,21 @@ export function AppInfoPanel({
   const visibleSources = forceLoading ? null : sources
 
   return (
-    <div className={className}>
+    <div className={`info-panel ${className ?? ''}`}>
       {!compact && <ConsoleGuide />}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {LABELS.map((label, index) => (
-          <InfoCard
-            key={label}
-            label={label}
-            source={visibleSources?.[index] ?? null}
-            compact={compact}
-          />
-        ))}
-      </div>
+      <section className="build-info space-y-3" aria-label="Build information">
+        {!compact && <h2 className="build-info-heading text-sm font-semibold">Build information</h2>}
+        <div className="info-sources grid gap-4 sm:grid-cols-2">
+          {LABELS.map((label, index) => (
+            <InfoCard
+              key={label}
+              label={label}
+              source={visibleSources?.[index] ?? null}
+              compact={compact}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
@@ -83,14 +87,14 @@ function ConsoleGuide() {
   const issuesUrl = GITHUB_REPO_URL ? `${GITHUB_REPO_URL}/issues` : null
 
   return (
-    <Card className="mb-4 text-left">
-      <CardHeader className="border-b">
+    <Card className="about-guide mb-4 text-left">
+      <CardHeader className="about-intro border-b">
         <CardTitle>Using the console</CardTitle>
         <p className="text-sm text-muted-foreground">Your assigned role determines which controls are available.</p>
       </CardHeader>
-      <CardContent className="grid gap-5 md:grid-cols-2">
-        <section aria-labelledby="console-roles" className="space-y-3">
-          <h3 id="console-roles" className="text-sm font-semibold">Roles and permissions</h3>
+      <CardContent className="about-sections grid gap-5 md:grid-cols-2">
+        <section aria-labelledby="console-roles" className="about-section space-y-3 border-t pt-4 text-sm leading-relaxed">
+          <h3 id="console-roles" className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />Roles and permissions</h3>
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
             <dt className="font-medium">Viewer</dt>
             <dd className="text-muted-foreground">View the console and configuration. Request Editor access from the role controls.</dd>
@@ -102,8 +106,8 @@ function ConsoleGuide() {
             <dd className="text-muted-foreground">Admin access plus runtime configuration and management of Admin and Owner roles.</dd>
           </dl>
         </section>
-        <section aria-labelledby="console-feedback" className="space-y-3 text-sm">
-          <h3 id="console-feedback" className="font-semibold">Feedback</h3>
+        <section aria-labelledby="console-feedback" className="about-section space-y-3 border-t pt-4 text-sm leading-relaxed">
+          <h3 id="console-feedback" className="flex items-center gap-2 font-semibold"><MessageSquare className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />Feedback</h3>
           <p className="text-muted-foreground">When reporting an issue, include the affected screen, what you expected, and what happened. Leave credentials and private data out of reports.</p>
           {issuesUrl && (
             <a href={issuesUrl} target="_blank" rel="noopener noreferrer"
@@ -140,7 +144,7 @@ function InfoCard({
   return (
     <Card size={compact ? 'sm' : 'default'} className="text-left">
       <CardHeader className="border-b">
-        <CardTitle className="flex items-center justify-between gap-2">
+        <CardTitle role="heading" aria-level={compact ? 2 : 3} className="flex items-center justify-between gap-2">
           <span>{label}</span>
           {loading ? (
             <Skeleton className="h-5 w-16 rounded-full" />

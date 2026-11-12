@@ -37,7 +37,7 @@ export function DataPagination({
       aria-label={`Pagination ${position === 'top' ? 'above' : 'below'} records`}
       aria-busy={loading}
       tabIndex={-1}
-      className="data-pagination flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"
+      className="data-pagination grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 text-xs text-muted-foreground sm:flex sm:flex-wrap sm:justify-between"
     >
       <span className="min-w-0 tabular-nums" role={position === 'top' ? 'status' : undefined}>
         {totalElements === undefined ? 'Loading…' : `${firstRow.toLocaleString()}–${lastRow.toLocaleString()} of ${totalElements.toLocaleString()}`}
@@ -50,14 +50,14 @@ export function DataPagination({
           onValueChange={(value) => value && onSizeChange(Number(value))}
           disabled={loading}
         >
-          <SelectTrigger size="sm" className="h-7 w-16" aria-label="Rows per page"><SelectValue /></SelectTrigger>
+          <SelectTrigger size="sm" className="h-7 w-18" aria-label="Rows per page"><SelectValue /></SelectTrigger>
           <SelectContent>
             {PAGE_SIZES.map((value) => <SelectItem key={value} value={String(value)}>{value}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
       <div className="flex items-center gap-1 sm:gap-2">
-        <Button variant="outline" size="sm" aria-label="Previous page" disabled={loading || page <= 0} onClick={() => onPageChange(page - 1)}>
+        <Button variant="outline" size="sm" className="px-1.5 sm:px-2.5" aria-label="Previous page" disabled={loading || page <= 0} onClick={() => onPageChange(page - 1)}>
           <ChevronLeft aria-hidden="true" /><span className="hidden sm:inline">Previous</span>
         </Button>
         <form
@@ -83,11 +83,11 @@ export function DataPagination({
             disabled={loading || totalPages === undefined || totalPages === 0}
             onChange={(event) => setDraft(event.target.value)}
             onBlur={() => setDraft(null)}
-            className="h-7 w-14 px-1 text-center text-xs tabular-nums"
+            className="h-7 w-10 px-1 sm:w-14 text-center text-xs tabular-nums"
           />
           <span className="whitespace-nowrap tabular-nums">/ {pageCount}</span>
         </form>
-        <Button variant="outline" size="sm" aria-label="Next page" disabled={loading || totalPages === undefined || page + 1 >= pageCount} onClick={() => onPageChange(page + 1)}>
+        <Button variant="outline" size="sm" className="px-1.5 sm:px-2.5" aria-label="Next page" disabled={loading || totalPages === undefined || page + 1 >= pageCount} onClick={() => onPageChange(page + 1)}>
           <span className="hidden sm:inline">Next</span><ChevronRight aria-hidden="true" />
         </Button>
       </div>

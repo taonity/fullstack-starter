@@ -39,14 +39,23 @@ for (const scene of scenes) {
       else if (scene.name === 'login' || scene.name === 'request-access') await expect(page.getByRole('button', { name: scene.ready, exact: true })).toBeVisible()
       else await expect(page.getByText(scene.ready, { exact: true })).toBeVisible()
       if (scene.name === 'admin') {
-        await expect(page.getByText('James Chen', { exact: true }).first()).toBeVisible()
-        await expect(page.getByText('Sophia Patel', { exact: true }).first()).toBeVisible()
-        await expect(page.getByText('EDIT_CONFIG', { exact: true })).toBeVisible()
+        await expect(page.getByText('James Chen').filter({ visible: true }).first()).toBeVisible()
+        await expect(page.getByText('Sophia Patel').filter({ visible: true }).first()).toBeVisible()
+        await expect(page.getByText('EDIT_CONFIG').filter({ visible: true })).toBeVisible()
         const audit = await page.request.get('/api/console/audit-logs?page=0&size=50&sort=occurredAt&direction=desc')
         expect(audit.ok()).toBe(true)
         const records = await audit.json()
         expect(records.content).toHaveLength(5)
         expect(records.content[0].occurredAt).toContain('2026-06-15T10:24:00')
+        if (testInfo.project.use.viewport!.width < 1024) {
+          for (const frame of await page.locator('.data-table-frame').all()) {
+            expect(await frame.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+            await expect(frame).toHaveCSS('border-left-width', '0px')
+          }
+          const request = page.locator('.record-row').filter({ has: page.getByRole('button', { name: 'Approve access for James Chen' }) })
+          await expect(request.locator('.record-heading').getByRole('button', { name: 'Approve access for James Chen' })).toBeVisible()
+          await expect(page.locator('.record-rank').first()).toHaveText('# 1')
+        }
       }
       await expect(page.locator('[data-slot="skeleton"]:visible')).toHaveCount(0)
       await expect(page.locator('.error-notification')).toHaveCount(0)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { Check, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { consoleApi } from './api'
 import { DataTab, type Column } from './DataTab'
+import { MobileRecordHeading } from './MobileRecordHeading'
 import { formatTime, formatExactTime } from './format'
 import { DatePeriodFilter, type DatePeriod } from './DatePeriodFilter'
 import type { AccessInfo, AuditLog, ConsoleRole, PendingRequest, UserSummary } from './types'
@@ -40,6 +42,7 @@ const AUDIT_COLUMNS: Column<AuditLog>[] = [
   },
   {
     key: 'action',
+    mobilePrimary: true,
     label: 'Action',
     sortKey: 'action',
     value: (a) => a.action,
@@ -133,6 +136,19 @@ export function AdminPanel({
     }
   }
 
+  const decisionButtons = (request: PendingRequest) => (
+    <div className="flex justify-end gap-1">
+      <Button size="sm" disabled={busyId !== null} onClick={() => void decide(request, true)}
+        aria-label={`Approve access for ${request.displayName}`} title="Approve access">
+        <Check className="lg:hidden" /><span className="hidden lg:inline">Approve</span>
+      </Button>
+      <Button size="sm" variant="destructive" disabled={busyId !== null} onClick={() => void decide(request, false)}
+        aria-label={`Reject access for ${request.displayName}`} title="Reject access">
+        <X className="lg:hidden" /><span className="hidden lg:inline">Reject</span>
+      </Button>
+    </div>
+  )
+
   return (
     <div className="admin-panel flex min-w-0 flex-col gap-4 sm:gap-6">
       <Card>
@@ -178,7 +194,8 @@ export function AdminPanel({
                 )}
                 {visibleRequests?.map((r) => (
                     <TableRow key={r.googleId} className="record-row h-12">
-                      <TableCell data-label="User" className="truncate font-medium">{r.displayName}</TableCell>
+                      <MobileRecordHeading label="User" actions={decisionButtons(r)}>{r.displayName}</MobileRecordHeading>
+                      <TableCell data-label="User" data-primary className="truncate font-medium">{r.displayName}</TableCell>
                       <TableCell data-label="Email" className="truncate text-muted-foreground">{r.email}</TableCell>
                       <TableCell data-label="Requested">{r.requestedRole ?? '—'}</TableCell>
                       <TableCell data-label="Grant">
@@ -202,23 +219,7 @@ export function AdminPanel({
                         </Select>
                       </TableCell>
                       <TableCell className="record-decision text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            disabled={busyId !== null}
-                            onClick={() => decide(r, true)}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={busyId !== null}
-                            onClick={() => decide(r, false)}
-                          >
-                            Reject
-                          </Button>
-                        </div>
+                        {decisionButtons(r)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -249,6 +250,7 @@ export function AdminPanel({
             <DataTab<AuditLog>
               columns={AUDIT_COLUMNS}
               columnWidthsKey="audit-log"
+              showRowNumbers
               defaultSortKey="occurredAt"
               defaultSortDirection="desc"
               rowKey={(a) => a.id}
@@ -368,7 +370,7 @@ function UsersCard({
                   </TableRow>
                 ))}
               {visibleUsers?.length === 0 && (
-                <TableRow>
+                <TableRow className="record-empty">
                   <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
                     No users yet.
                   </TableCell>
@@ -379,36 +381,30 @@ function UsersCard({
                   // Only the owner may change an existing admin/owner.
                   const targetIsAdmin = u.role === 'ADMIN' || u.role === 'OWNER'
                   const locked = isSelf || (targetIsAdmin && !access.isOwner)
+                  const roleControl = locked ? (
+                    <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
+                  ) : (
+                    <Select items={roleItems} value={u.role} onValueChange={(value) => value && changeRole(u, value as ConsoleRole)}>
+                      <SelectTrigger size="sm" className="w-full md:w-[160px]" disabled={busyId !== null} aria-label={`Role for ${u.displayName}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assignableRoles.map(role => <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )
                   return (
                     <TableRow key={u.googleId} className="record-row h-12">
-                      <TableCell data-label="User" className="truncate font-medium">{u.displayName}</TableCell>
+                      <MobileRecordHeading label="User" actions={roleControl}>{u.displayName}</MobileRecordHeading>
+                      <TableCell data-label="User" data-primary className="truncate font-medium">{u.displayName}</TableCell>
                       <TableCell data-label="Email" className="truncate text-muted-foreground">{u.email}</TableCell>
                       <TableCell data-label="Status">
                         <Badge variant="secondary" className="font-normal">
                           {u.accessStatus}
                         </Badge>
                       </TableCell>
-                      <TableCell data-label="Role">
-                        {locked ? (
-                          <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
-                        ) : (
-                          <Select
-                            items={roleItems}
-                            value={u.role}
-                            onValueChange={(v) => v && changeRole(u, v as ConsoleRole)}
-                          >
-                            <SelectTrigger size="sm" className="w-full md:w-[160px]" disabled={busyId !== null} aria-label={`Role for ${u.displayName}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {assignableRoles.map((r) => (
-                                <SelectItem key={r} value={r}>
-                                  {ROLE_LABELS[r]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
+                      <TableCell data-label="Role" data-primary>
+                        {roleControl}
                       </TableCell>
                     </TableRow>
                   )

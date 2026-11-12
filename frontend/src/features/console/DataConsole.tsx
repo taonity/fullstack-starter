@@ -170,52 +170,17 @@ export default function DataConsole({
 
       <Tabs value={selectedTab} onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}>
         <div className="console-navigation flex flex-wrap items-center justify-between gap-2">
-          {/* Mobile: compact dropdown keeps every tab one tap away without hidden horizontal scroll. */}
-          <Select
-            items={tabItems}
-            value={selectedTab}
-            onValueChange={(v) => selectTab((v ?? 'about') as TabKey)}
-          >
-            <SelectTrigger size="sm" className="h-8 w-36 sm:hidden" aria-label="Console section">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(tabItems).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {/* Tablet and up: full tab bar. */}
-          <TabsList variant="line" className="hidden h-9 min-w-48 justify-start sm:flex">
-            <TabsTrigger
-              value="about"
-              className={tabAnimationsReady ? undefined : 'transition-none after:transition-none'}
-            >
-              About
-            </TabsTrigger>
-            <TabsTrigger
-              value="config"
-              className={tabAnimationsReady ? undefined : 'transition-none after:transition-none'}
-            >
-              Config
-            </TabsTrigger>
-            {showAdmin && (
-              <TabsTrigger
-                value="admin"
-                className={`${tabAnimationsReady ? '' : 'transition-none after:transition-none'} relative w-20 justify-center`}
-                disabled={isLoading && !forceLoading && !access?.isAdmin}
-              >
-                <span className="text-center">Admin</span>
-                <span
-                  className={`pointer-events-none absolute -top-0.5 -right-0.5 size-2 rounded-full bg-destructive ${hasPending ? '' : 'invisible'}`}
-                  aria-label={pendingLabel}
-                />
+          <TabsList aria-label="Console sections" className="console-tabs grid h-auto w-full grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-1 bg-transparent p-0 group-data-horizontal/tabs:h-auto lg:flex lg:w-fit lg:justify-start">
+            {Object.entries(tabItems).map(([value, label]) => (
+              <TabsTrigger key={value} value={value}
+                disabled={value === 'admin' && isLoading && !forceLoading && !access?.isAdmin}
+                className={`relative h-9 flex-none border-border px-2 text-xs lg:h-8 lg:border-transparent lg:text-sm lg:data-active:bg-transparent lg:group-data-[variant=default]/tabs-list:data-active:shadow-none lg:data-active:after:opacity-100 dark:lg:data-active:border-transparent dark:lg:data-active:bg-transparent ${tabAnimationsReady ? '' : 'transition-none after:transition-none'}`}>
+                {label}
+                {value === 'admin' && <span className={`absolute top-1 right-1 size-1.5 rounded-full bg-destructive ${hasPending ? '' : 'invisible'}`} aria-label={pendingLabel} />}
               </TabsTrigger>
-            )}
+            ))}
           </TabsList>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="console-access flex flex-wrap items-center gap-2">
             {access ? (
               <>
                 <UpgradeAccessControl access={access} onUpdated={setAccess} onError={setError} />
