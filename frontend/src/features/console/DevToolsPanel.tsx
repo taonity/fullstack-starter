@@ -133,7 +133,7 @@ export function DevToolsPanel() {
         type="button"
         size="icon"
         variant="outline"
-        className="fixed right-3 bottom-3 z-[60] size-11 bg-background/95 sm:size-8 shadow-md backdrop-blur"
+        className="fixed right-3 bottom-16 z-[60] size-11 bg-background/95 sm:bottom-12 sm:size-8 shadow-md backdrop-blur"
         onClick={() => setOpen(true)}
         aria-label="Open developer tools"
         title="Developer tools (Alt+Shift+D)"

@@ -24,6 +24,20 @@ spring:
             redirect-uri: http://127.0.0.1:8080/login/oauth2/code/stub-bob
             authorization-grant-type: authorization_code
             scope: profile,email
+          stub-editor:
+            provider: google-stub-editor
+            client-id: stub-google-client-id
+            client-secret: stub-google-client-secret
+            redirect-uri: http://127.0.0.1:8080/login/oauth2/code/stub-editor
+            authorization-grant-type: authorization_code
+            scope: profile,email
+          stub-viewer:
+            provider: google-stub-viewer
+            client-id: stub-google-client-id
+            client-secret: stub-google-client-secret
+            redirect-uri: http://127.0.0.1:8080/login/oauth2/code/stub-viewer
+            authorization-grant-type: authorization_code
+            scope: profile,email
         provider:
           google:
             authorization-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/authorize
@@ -38,6 +52,16 @@ spring:
             authorization-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/authorize
             token-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/token
             user-info-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/v3/userinfo/bob
+            user-name-attribute: sub
+          google-stub-editor:
+            authorization-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/authorize
+            token-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/token
+            user-info-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/v3/userinfo/editor
+            user-name-attribute: sub
+          google-stub-viewer:
+            authorization-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/authorize
+            token-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/token
+            user-info-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/v3/userinfo/viewer
             user-name-attribute: sub
 
 app:
@@ -55,9 +79,13 @@ app:
       - registration-id: google-fullstack-starter
         label: Owner (test@example.com)
       - registration-id: stub-alice
-        label: Alice (no access)
+        label: Alice (alice@example.com)
       - registration-id: stub-bob
-        label: Bob (no access)
+        label: Bob (bob@example.com)
+      - registration-id: stub-editor
+        label: Editor (editor@example.com)
+      - registration-id: stub-viewer
+        label: Viewer (viewer@example.com)
 
 logging:
   level:

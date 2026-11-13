@@ -89,26 +89,26 @@ function ConsoleGuide() {
   return (
     <Card className="about-guide mb-4 text-left">
       <CardHeader className="about-intro border-b">
-        <CardTitle>Using the console</CardTitle>
-        <p className="text-sm text-muted-foreground">Your assigned role determines which controls are available.</p>
+        <CardTitle role="heading" aria-level={2} className="text-xl font-semibold sm:text-2xl">Fullstack Starter</CardTitle>
+        <p className="max-w-3xl text-sm leading-relaxed text-foreground/85">Every new web app needs sign-in, access control, and a place to manage it. Fullstack Starter puts those pieces in a Kotlin and Next.js template, so you can start building your actual idea instead of setting them up again.</p>
       </CardHeader>
-      <CardContent className="about-sections grid gap-5 md:grid-cols-2">
-        <section aria-labelledby="console-roles" className="about-section space-y-3 border-t pt-4 text-sm leading-relaxed">
-          <h3 id="console-roles" className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />Roles and permissions</h3>
+      <CardContent className="about-sections grid gap-5 md:grid-cols-2 md:gap-0 md:divide-x">
+        <section aria-labelledby="console-roles" className="about-section space-y-3 text-sm leading-relaxed md:pr-2.5">
+          <h3 id="console-roles" className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4 shrink-0 text-foreground" aria-hidden="true" />Roles and permissions</h3>
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
             <dt className="font-medium">Viewer</dt>
-            <dd className="text-muted-foreground">View the console and configuration. Request Editor access from the role controls.</dd>
+            <dd className="text-foreground">View the console and configuration. Request Editor access from the role controls.</dd>
             <dt className="font-medium">Editor</dt>
-            <dd className="text-muted-foreground">Viewer access plus editing permission for features that support it. Runtime settings are managed by the Owner.</dd>
+            <dd className="text-foreground">Viewer access plus editing permission for features that support it. Runtime settings are managed by the Owner.</dd>
             <dt className="font-medium">Admin</dt>
-            <dd className="text-muted-foreground">Review access requests, manage roles up to Editor, and inspect the audit log.</dd>
+            <dd className="text-foreground">Review access requests, manage roles up to Editor, and inspect the audit log.</dd>
             <dt className="font-medium">Owner</dt>
-            <dd className="text-muted-foreground">Admin access plus runtime configuration and management of Admin and Owner roles.</dd>
+            <dd className="text-foreground">Admin access plus runtime configuration and management of Admin and Owner roles.</dd>
           </dl>
         </section>
-        <section aria-labelledby="console-feedback" className="about-section space-y-3 border-t pt-4 text-sm leading-relaxed">
-          <h3 id="console-feedback" className="flex items-center gap-2 font-semibold"><MessageSquare className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />Feedback</h3>
-          <p className="text-muted-foreground">When reporting an issue, include the affected screen, what you expected, and what happened. Leave credentials and private data out of reports.</p>
+        <section aria-labelledby="console-feedback" className="about-section space-y-3 text-sm leading-relaxed md:pl-2.5">
+          <h3 id="console-feedback" className="flex items-center gap-2 font-semibold"><MessageSquare className="size-4 shrink-0 text-foreground" aria-hidden="true" />Feedback</h3>
+          <p className="text-foreground">When reporting an issue, include the affected screen, what you expected, and what happened. Leave credentials and private data out of reports.</p>
           {issuesUrl && (
             <a href={issuesUrl} target="_blank" rel="noopener noreferrer"
               className="inline-flex min-h-11 items-center text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid">
@@ -156,7 +156,7 @@ function InfoCard({
           <Skeleton className="mt-1 h-3 w-32" />
         ) : (
           deployedAgo && (
-            <p className="text-xs text-muted-foreground" title={deployedAt ?? undefined}>
+            <p className="text-xs text-foreground" title={deployedAt ?? undefined}>
               Built {deployedAgo}
             </p>
           )
@@ -181,7 +181,7 @@ function InfoCard({
               <div key={row.key}>
                 {index > 0 && <Separator className="my-1.5" />}
                 <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-baseline gap-2">
-                  <dt className="min-w-0 text-xs text-muted-foreground wrap-anywhere">{row.label}</dt>
+                  <dt className="min-w-0 text-xs text-foreground wrap-anywhere">{row.label}</dt>
                   <dd className="min-w-0 break-all text-right text-xs font-medium tabular-nums">
                     <InfoValueCell row={row} />
                   </dd>
@@ -190,7 +190,7 @@ function InfoCard({
             ))}
           </dl>
         ) : (
-          <p className="text-xs text-muted-foreground">Information unavailable.</p>
+          <p className="text-xs text-foreground">Information unavailable.</p>
         )}
       </CardContent>
     </Card>

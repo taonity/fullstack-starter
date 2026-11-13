@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth2/v3/userinfo/editor"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "sub": "google-user-editor",
+      "name": "Editor Tester",
+      "email": "editor@example.com",
+      "email_verified": true
+    }
+  }
+}

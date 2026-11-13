@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import Image from 'next/image'
 import { checkBackendLiveness, POST_LOGIN_PATH_KEY, safeLocalPath } from '@/lib/auth'
 import { getRuntimeConfig } from '@/lib/runtimeConfig'
 import { getCookie, deleteCookie } from '@/lib/cookies'
 import ErrorNotification from '@/components/ErrorNotification'
-import { AppInfoPanel } from '@/features/info/AppInfoPanel'
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   UNAUTHORIZED_ACCOUNT: 'Your account is not authorized to access this application.',
@@ -16,19 +15,6 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isChecking, setIsChecking] = useState(false)
-  const [showScrollHint, setShowScrollHint] = useState(true)
-
-  useEffect(() => {
-    const onScroll = () => setShowScrollHint(window.scrollY < 40)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  const scrollToAbout = () => {
-    document.getElementById('login-about')?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
@@ -86,7 +72,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div>
+    <div className="flex flex-1 flex-col">
       <div className="login-container relative">
         <div className="login-card">
           <h1 className="login-title">Fullstack Starter</h1>
@@ -103,25 +89,10 @@ export default function LoginPage() {
             onClick={handleLogin}
             disabled={isChecking}
           >
-            {isChecking ? 'Checking...' : 'Sign in with Google'}
+            <Image src="/google-logo.svg" alt="" width={20} height={20} style={{ width: 20, height: 20 }} className="shrink-0 object-contain" unoptimized aria-hidden="true" />
+            <span>{isChecking ? 'Checking...' : 'Sign in with Google'}</span>
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={scrollToAbout}
-          aria-label="Scroll to system information"
-          className={`absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 text-muted-foreground transition-opacity duration-300 hover:text-foreground ${
-            showScrollHint ? 'opacity-100' : 'pointer-events-none opacity-0'
-          }`}
-        >
-          <span className="text-xs">System information</span>
-          <ChevronDown className="size-5 animate-bounce" />
-        </button>
-      </div>
-
-      <div id="login-about" className="mx-auto w-full max-w-3xl px-4 pb-16">
-        <AppInfoPanel compact />
       </div>
     </div>
   )

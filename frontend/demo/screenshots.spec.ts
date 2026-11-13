@@ -2,10 +2,35 @@ import { expect, test } from '@playwright/test'
 import { createScreenshotCapture } from '@taonity/demo-screenshots'
 
 const capture = createScreenshotCapture(expect)
+
+test.describe('initial theme', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  for (const { saved, system, dark } of [
+    { saved: 'dark', system: 'light', dark: true },
+    { saved: 'light', system: 'dark', dark: false },
+    { saved: 'system', system: 'dark', dark: true },
+    { saved: null, system: 'dark', dark: true },
+  ] as const) {
+    test(`applies ${saved ?? 'default'} theme before application scripts load (${system} system)`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: system })
+      await page.addInitScript(value => {
+        if (value === null) localStorage.removeItem('theme')
+        else localStorage.setItem('theme', value)
+      }, saved)
+      await page.route(/\/_next\/.*\.js(?:\?|$)/, route => route.abort())
+      await page.goto('/login')
+      await expect(page.locator('.login-button')).toBeVisible()
+      expect(await page.locator('html').evaluate(element => element.classList.contains('dark'))).toBe(dark)
+      await expect(page.locator('head > #theme-init')).toHaveCount(1)
+    })
+  }
+})
+
 const scenes = [
   { name: 'admin', tab: 'admin', ready: 'Pending access requests', session: 'owner' },
   { name: 'config', tab: 'config', ready: 'Search settings', session: 'owner' },
-  { name: 'about', tab: 'about', ready: 'Using the console', session: 'owner' },
+  { name: 'about', tab: 'about', ready: 'Fullstack Starter', session: 'owner' },
   { name: 'login', ready: 'Sign in with Google', session: null },
   { name: 'request-access', ready: 'Request access', session: 'guest' },
   { name: 'access-pending', ready: 'Access pending', session: 'pending' },
@@ -37,6 +62,7 @@ for (const scene of scenes) {
       await page.addStyleTag({ content: '*, *::before, *::after { animation: none !important; transition: none !important; }' })
       if (scene.name === 'config') await expect(page.getByRole('textbox', { name: scene.ready })).toBeVisible()
       else if (scene.name === 'login' || scene.name === 'request-access') await expect(page.getByRole('button', { name: scene.ready, exact: true })).toBeVisible()
+      else if (scene.name === 'about') await expect(page.getByRole('heading', { name: scene.ready, exact: true })).toBeVisible()
       else await expect(page.getByText(scene.ready, { exact: true })).toBeVisible()
       if (scene.name === 'admin') {
         await expect(page.getByText('James Chen').filter({ visible: true }).first()).toBeVisible()
@@ -95,7 +121,7 @@ test.describe('console interactions', () => {
 
   test('opens row details with the keyboard', async ({ page }) => {
     await page.goto('/?tab=admin')
-    const rows = page.locator('.data-tab .record-row')
+    const rows = page.locator('[data-table-id="audit-log"] .record-row')
     await expect(rows).toHaveCount(5)
     await rows.first().focus()
     await page.keyboard.press('Enter')

@@ -3,6 +3,7 @@ package org.taonity.fullstackstarter.user.service
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.taonity.fullstackstarter.common.config.ConsoleProperties
 import org.taonity.fullstackstarter.security.principal.GoogleUserPrincipal
+import org.taonity.fullstackstarter.user.entity.AccessRequestStatus
 import org.taonity.fullstackstarter.user.entity.ConsoleRole
 import org.taonity.fullstackstarter.user.entity.UserEntity
 import org.taonity.fullstackstarter.user.repository.UserRepository
@@ -38,7 +39,9 @@ class UserService(
                 googleId = principal.getGoogleId(),
                 email = principal.getEmail(),
                 displayName = principal.getDisplayName(),
-                pictureUrl = principal.getPictureUrl()
+                pictureUrl = principal.getPictureUrl(),
+                role = ConsoleRole.VIEWER,
+                accessStatus = AccessRequestStatus.APPROVED,
             )
             if (isOwner) {
                 newUser.grantOwner()

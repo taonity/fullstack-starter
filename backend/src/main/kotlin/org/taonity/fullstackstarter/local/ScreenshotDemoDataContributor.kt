@@ -36,6 +36,8 @@ class ScreenshotDemoDataContributor(
         stubUser("/alice", "google-user-alice", "James Chen", "james.chen@example.com")
         stubUser("/bob", "google-user-bob", "Sophia Patel", "sophia.patel@example.com")
         stubUser("/guest", "demo-emma", "Emma Wilson", "emma.wilson@example.com")
+        stubUser("/editor", "demo-noah", "Noah Reed", "noah.reed@example.com")
+        stubUser("/viewer", "demo-olivia", "Olivia Bennett", "olivia.bennett@example.com")
         return recordCount(jdbc) - before
     }
 

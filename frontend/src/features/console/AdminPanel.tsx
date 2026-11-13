@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,19 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { consoleApi } from './api'
 import { DataTab, type Column } from './DataTab'
 import { RecordTimestamp } from './RecordTimestamp'
-import { MobileRecordHeading } from './MobileRecordHeading'
+import { pageRows } from './pageRows'
 import { formatExactTime } from './format'
 import { DatePeriodFilter, type DatePeriod } from './DatePeriodFilter'
 import type { AccessInfo, AuditLog, ConsoleRole, PendingRequest, UserSummary } from './types'
@@ -95,41 +86,21 @@ export function AdminPanel({
   refreshKey?: number
 }) {
   const [datePeriod, setDatePeriod] = useState<DatePeriod>({ startDate: '', endDate: '' })
-  const [requests, setRequests] = useState<PendingRequest[] | null>(null)
   const [grantRoles, setGrantRoles] = useState<Record<string, ConsoleRole>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
-
-  const loadRequests = useCallback(async () => {
-    try {
-      const result = await consoleApi.listPendingRequests()
-      setRequests(result)
-      onPendingCountChange?.(result.length)
-      setGrantRoles(
-        Object.fromEntries(
-          result.map((r) => [r.googleId, (r.requestedRole ?? 'VIEWER') as ConsoleRole]),
-        ),
-      )
-    } catch {
-      onError('Failed to load access requests.')
-    }
-  }, [onError, onPendingCountChange])
-
-  useEffect(() => {
-    if (forceLoading) return
-    void loadRequests()
-  }, [forceLoading, loadRequests, refreshKey])
-
-  const visibleRequests = forceLoading ? null : requests
+  const [accessRevision, setAccessRevision] = useState(0)
+  const refreshAccess = useCallback(() => setAccessRevision(previous => previous + 1), [])
+  const tableRefreshKey = refreshKey + accessRevision
 
   const decide = async (req: PendingRequest, approve: boolean) => {
     setBusyId(req.googleId)
     try {
       if (approve) {
-        await consoleApi.approveRequest(req.googleId, grantRoles[req.googleId] ?? 'VIEWER')
+        await consoleApi.approveRequest(req.googleId, grantRoles[req.googleId] ?? req.requestedRole ?? 'VIEWER')
       } else {
         await consoleApi.rejectRequest(req.googleId)
       }
-      await loadRequests()
+      refreshAccess()
     } catch {
       onError(approve ? 'Failed to approve request.' : 'Failed to reject request.')
     } finally {
@@ -157,76 +128,40 @@ export function AdminPanel({
           <CardTitle className="text-base">Pending access requests</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="data-table-frame min-w-0 overflow-hidden rounded-lg border">
-            <Table className="mobile-records min-w-[640px] table-fixed [&_td]:py-2 [&_tr]:h-12">
-              <colgroup>
-                <col className="w-[18%]" />
-                <col className="w-[26%]" />
-                <col className="w-[14%]" />
-                <col className="w-[132px]" />
-                <col className="w-[176px]" />
-              </colgroup>
-              <TableHeader>
-                <TableRow className="bg-muted/40">
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Requested</TableHead>
-                  <TableHead>Grant</TableHead>
-                  <TableHead className="text-right">Decision</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!visibleRequests &&
-                  Array.from({ length: 2 }).map((_, index) => (
-                    <TableRow key={index} className="record-row h-12 hover:bg-transparent" aria-hidden="true">
-                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-[120px]" /></TableCell>
-                      <TableCell><Skeleton className="ml-auto h-8 w-36" /></TableCell>
-                    </TableRow>
-                  ))}
-                {visibleRequests?.length === 0 && (
-                  <TableRow className="record-empty">
-                    <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
-                      No pending requests.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {visibleRequests?.map((r) => (
-                    <TableRow key={r.googleId} className="record-row h-12">
-                      <MobileRecordHeading label="User" actions={decisionButtons(r)}>{r.displayName}</MobileRecordHeading>
-                      <TableCell data-label="User" data-primary className="truncate font-medium">{r.displayName}</TableCell>
-                      <TableCell data-label="Email" className="truncate text-muted-foreground">{r.email}</TableCell>
-                      <TableCell data-label="Requested">{r.requestedRole ?? '—'}</TableCell>
-                      <TableCell data-label="Grant">
-                        <Select
-                          items={{ VIEWER: 'Viewer', EDITOR: 'Editor' }}
-                          value={grantRoles[r.googleId] ?? 'VIEWER'}
-                          onValueChange={(v) =>
-                            setGrantRoles((prev) => ({
-                              ...prev,
-                              [r.googleId]: (v ?? 'VIEWER') as ConsoleRole,
-                            }))
-                          }
-                        >
-                          <SelectTrigger size="sm" className="w-full md:w-[120px]" aria-label={`Grant role for ${r.displayName}`} disabled={busyId !== null}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="VIEWER">Viewer</SelectItem>
-                            <SelectItem value="EDITOR">Editor</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="record-decision text-right">
-                        {decisionButtons(r)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTab<PendingRequest>
+            columns={[
+              ...REQUEST_COLUMNS,
+              {
+                key: 'grant', label: 'Grant', sortKey: 'grant', sortable: false,
+                value: row => ROLE_LABELS[grantRoles[row.googleId] ?? row.requestedRole ?? 'VIEWER'],
+                defaultWidth: 150, interactive: true, mobileCompact: true,
+                render: row => (
+                  <Select items={{ VIEWER: 'Viewer', EDITOR: 'Editor' }}
+                    value={grantRoles[row.googleId] ?? row.requestedRole ?? 'VIEWER'}
+                    onValueChange={value => value && setGrantRoles(previous => ({ ...previous, [row.googleId]: value as ConsoleRole }))}>
+                    <SelectTrigger size="sm" className="w-full" aria-label={`Grant role for ${row.displayName}`} disabled={busyId !== null}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VIEWER">Viewer</SelectItem>
+                      <SelectItem value="EDITOR">Editor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ),
+              },
+            ]}
+            columnWidthsKey="pending-access-requests"
+            defaultSortKey="displayName" defaultSortDirection="asc"
+            rowKey={row => row.googleId}
+            rowActions={decisionButtons} rowActionsWidth={180} stickyActions={false}
+            load={async (page, size, q, field, sort, direction, exact) => {
+              const rows = await consoleApi.listPendingRequests()
+              onPendingCountChange?.(rows.length)
+              return pageRows(rows, REQUEST_COLUMNS, row => row.googleId, page, size, q, field, sort, direction, exact)
+            }}
+            emptyLabel="No pending requests." forceLoading={forceLoading} onError={onError}
+            refreshKey={tableRefreshKey}
+          />
         </CardContent>
       </Card>
 
@@ -234,7 +169,8 @@ export function AdminPanel({
         access={access}
         forceLoading={forceLoading}
         onError={onError}
-        refreshKey={refreshKey}
+        refreshKey={tableRefreshKey}
+        onAccessChange={refreshAccess}
       />
 
       <Card>
@@ -247,16 +183,13 @@ export function AdminPanel({
         <CardContent>
           <div className="flex min-w-0 flex-col gap-3">
             <DatePeriodFilter value={datePeriod} onChange={setDatePeriod} disabled={forceLoading}
-              loadRange={consoleApi.getAuditDateRange} refreshKey={refreshKey} onError={onError} />
+              loadRange={consoleApi.getAuditDateRange} refreshKey={tableRefreshKey} onError={onError} />
             <DataTab<AuditLog>
               columns={AUDIT_COLUMNS}
               columnWidthsKey="audit-log"
               showRowNumbers
               expandOnRowClick
-              expand={row => <dl className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
-                {Object.entries({ 'Record ID': row.id, When: formatExactTime(row.occurredAt), Action: row.action, Target: row.targetType, 'Target ID': row.targetId ?? '\u2014', Actor: row.actorEmail }).map(([label, value]) =>
-                  <div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="wrap-anywhere">{value}</dd></div>)}
-              </dl>}
+              expand={row => <RecordDetails values={{ 'Record ID': row.id, When: formatExactTime(row.occurredAt), Action: row.action, Target: row.targetType, 'Target ID': row.targetId ?? '\u2014', Actor: row.actorEmail }} />}
               defaultSortKey="occurredAt"
               defaultSortDirection="desc"
               rowKey={(a) => a.id}
@@ -267,7 +200,7 @@ export function AdminPanel({
               emptyLabel="No audit entries."
               forceLoading={forceLoading}
               onError={onError}
-              refreshKey={refreshKey}
+              refreshKey={tableRefreshKey}
             />
           </div>
         </CardContent>
@@ -284,58 +217,64 @@ const ROLE_LABELS: Record<ConsoleRole, string> = {
   OWNER: 'Owner',
 }
 
-function UsersCard({
-  access,
-  forceLoading,
-  onError,
-  refreshKey,
-}: {
+const REQUEST_COLUMNS: Column<PendingRequest>[] = [
+  { key: 'displayName', label: 'User', sortKey: 'displayName', searchKey: 'displayName', value: row => row.displayName, defaultWidth: 180, mobilePrimary: true, cellClassName: 'truncate font-medium' },
+  { key: 'email', label: 'Email', sortKey: 'email', searchKey: 'email', value: row => row.email, defaultWidth: 260, cellClassName: 'truncate text-muted-foreground' },
+  { key: 'requestedRole', label: 'Requested', sortKey: 'requestedRole', searchKey: 'requestedRole', value: row => row.requestedRole ? ROLE_LABELS[row.requestedRole] : '', render: row => row.requestedRole ? ROLE_LABELS[row.requestedRole] : '\u2014', defaultWidth: 140, mobileCompact: true },
+]
+
+const USER_COLUMNS: Column<UserSummary>[] = [
+  ...REQUEST_COLUMNS.slice(0, 2),
+  { key: 'accessStatus', label: 'Status', sortKey: 'accessStatus', searchKey: 'accessStatus', value: row => row.accessStatus, render: row => <Badge variant="secondary" className="font-normal">{row.accessStatus}</Badge>, defaultWidth: 140, mobileCompact: true },
+  { key: 'role', label: 'Role', sortKey: 'role', searchKey: 'role', value: row => ROLE_LABELS[row.role], defaultWidth: 180, interactive: true, mobileTools: true },
+]
+
+function RecordDetails({ values }: { values: Record<string, string> }) {
+  return <dl className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
+    {Object.entries(values).map(([label, value]) =>
+      <div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="wrap-anywhere">{value}</dd></div>)}
+  </dl>
+}
+
+function UsersCard({ access, forceLoading, onError, refreshKey, onAccessChange }: {
   access: AccessInfo
   forceLoading: boolean
   onError: (message: string) => void
   refreshKey: number
+  onAccessChange: () => void
 }) {
-  const [users, setUsers] = useState<UserSummary[] | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    try {
-      setUsers(await consoleApi.listUsers())
-    } catch {
-      onError('Failed to load users.')
-    }
-  }, [onError])
-
-  useEffect(() => {
-    if (forceLoading) return
-    void load()
-  }, [forceLoading, load, refreshKey])
-
-  const visibleUsers = forceLoading ? null : users
-
   // Owners can assign any role; admins only up to EDITOR.
   const assignableRoles: ConsoleRole[] = access.isOwner
     ? ['NONE', 'VIEWER', 'EDITOR', 'ADMIN', 'OWNER']
     : ['NONE', 'VIEWER', 'EDITOR']
-
-  const roleItems = Object.fromEntries(
-    assignableRoles.map((r) => [r, ROLE_LABELS[r]]),
-  ) as Record<string, string>
+  const roleItems = Object.fromEntries(assignableRoles.map(role => [role, ROLE_LABELS[role]]))
 
   const changeRole = async (user: UserSummary, role: ConsoleRole) => {
     if (role === user.role) return
     setBusyId(user.googleId)
     try {
-      const updated = await consoleApi.changeUserRole(user.googleId, role)
-      if (updated) {
-        setUsers((prev) => (prev ?? []).map((u) => (u.googleId === updated.googleId ? updated : u)))
-      }
+      await consoleApi.changeUserRole(user.googleId, role)
+      onAccessChange()
     } catch {
       onError('Failed to change role. Admin roles can only be managed by the owner.')
-      void load()
     } finally {
       setBusyId(null)
     }
+  }
+
+  const roleControl = (user: UserSummary) => {
+    const locked = user.email === access.email || (!access.isOwner && (user.role === 'ADMIN' || user.role === 'OWNER'))
+    return locked ? <Badge variant="outline">{ROLE_LABELS[user.role]}</Badge> : (
+      <Select items={roleItems} value={user.role} onValueChange={value => value && void changeRole(user, value as ConsoleRole)}>
+        <SelectTrigger size="sm" className="w-full min-w-0 md:w-[160px]" disabled={busyId !== null} aria-label={`Role for ${user.displayName}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {assignableRoles.map(role => <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    )
   }
 
   return (
@@ -343,81 +282,18 @@ function UsersCard({
       <CardHeader>
         <CardTitle className="text-base">Users</CardTitle>
         <p className="text-xs text-muted-foreground">
-          {access.isOwner
-            ? 'You can assign any role, including admins.'
-            : 'You can manage roles up to Editor. Admin roles are managed by the owner.'}
+          {access.isOwner ? 'You can assign any role, including admins.' : 'You can manage roles up to Editor. Admin roles are managed by the owner.'}
         </p>
       </CardHeader>
       <CardContent>
-        <div className="data-table-frame min-w-0 overflow-hidden rounded-lg border">
-          <Table className="mobile-records min-w-[560px] table-fixed [&_td]:py-2 [&_tr]:h-12">
-            <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[34%]" />
-              <col className="w-[20%]" />
-              <col className="w-[180px]" />
-            </colgroup>
-            <TableHeader>
-              <TableRow className="bg-muted/40">
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[180px]">Role</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {!visibleUsers &&
-                  Array.from({ length: 2 }).map((_, index) => (
-                  <TableRow key={index} className="record-row h-12 hover:bg-transparent" aria-hidden="true">
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-40" /></TableCell>
-                  </TableRow>
-                ))}
-              {visibleUsers?.length === 0 && (
-                <TableRow className="record-empty">
-                  <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
-                    No users yet.
-                  </TableCell>
-                </TableRow>
-              )}
-              {visibleUsers?.map((u) => {
-                  const isSelf = u.email === access.email
-                  // Only the owner may change an existing admin/owner.
-                  const targetIsAdmin = u.role === 'ADMIN' || u.role === 'OWNER'
-                  const locked = isSelf || (targetIsAdmin && !access.isOwner)
-                  const roleControl = locked ? (
-                    <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
-                  ) : (
-                    <Select items={roleItems} value={u.role} onValueChange={(value) => value && changeRole(u, value as ConsoleRole)}>
-                      <SelectTrigger size="sm" className="w-full md:w-[160px]" disabled={busyId !== null} aria-label={`Role for ${u.displayName}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {assignableRoles.map(role => <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )
-                  return (
-                    <TableRow key={u.googleId} className="record-row h-12">
-                      <MobileRecordHeading label="User" actions={roleControl}>{u.displayName}</MobileRecordHeading>
-                      <TableCell data-label="User" data-primary className="truncate font-medium">{u.displayName}</TableCell>
-                      <TableCell data-label="Email" className="truncate text-muted-foreground">{u.email}</TableCell>
-                      <TableCell data-label="Status">
-                        <Badge variant="secondary" className="font-normal">
-                          {u.accessStatus}
-                        </Badge>
-                      </TableCell>
-                      <TableCell data-label="Role" data-primary>
-                        {roleControl}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTab<UserSummary>
+          columns={USER_COLUMNS.map(column => column.key === 'role' ? { ...column, render: roleControl } : column)}
+          columnWidthsKey="users" defaultSortKey="displayName" defaultSortDirection="asc"
+          rowKey={row => row.googleId} showRowNumbers
+          load={async (page, size, q, field, sort, direction, exact) =>
+            pageRows(await consoleApi.listUsers(), USER_COLUMNS, row => row.googleId, page, size, q, field, sort, direction, exact)}
+          emptyLabel="No users yet." forceLoading={forceLoading} onError={onError} refreshKey={refreshKey}
+        />
       </CardContent>
     </Card>
   )

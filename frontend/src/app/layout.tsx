@@ -3,11 +3,12 @@ import type { Metadata, Viewport } from 'next'
 import { connection } from 'next/server'
 import { getAppIdentity } from '@/lib/appIdentity'
 import { Geist } from 'next/font/google'
-import Script from 'next/script'
 import { cn } from '@/lib/utils'
-import { ThemeProvider, themeInitScript } from '@/components/theme/ThemeProvider'
+import { ThemeProvider } from '@/components/theme/ThemeProvider'
+import { themeInitScript } from '@/components/theme/themeInit'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { DevToolsPanel } from '@/features/console/DevToolsPanel'
+import { AppFooter } from '@/components/AppFooter'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -33,13 +34,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={cn('font-sans', geist.variable)}>
-      <body>
-        <Script id="theme-init" strategy="beforeInteractive">
-          {themeInitScript}
-        </Script>
+      <head>
+        <script id="theme-init" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="flex min-h-svh flex-col">
         <ThemeProvider>
           <ThemeToggle className="absolute right-3 top-2 z-50 min-h-11 min-w-11 sm:top-3 sm:min-h-0 sm:min-w-0" />
-          {children}
+          <div className="flex flex-1 flex-col">{children}</div>
+          <AppFooter />
           <DevToolsPanel />
         </ThemeProvider>
       </body>

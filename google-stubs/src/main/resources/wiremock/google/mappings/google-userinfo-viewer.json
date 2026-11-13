@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth2/v3/userinfo/viewer"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "sub": "google-user-viewer",
+      "name": "Viewer Tester",
+      "email": "viewer@example.com",
+      "email_verified": true
+    }
+  }
+}

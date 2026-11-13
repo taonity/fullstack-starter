@@ -37,4 +37,14 @@ app:
     owner-emails: alice.morgan@example.com
     admin-emails: ""
   dev:
-    stub-logins: []
+    stub-logins:
+      - registration-id: google-fullstack-starter
+        label: Owner (alice.morgan@example.com)
+      - registration-id: stub-alice
+        label: Pending (james.chen@example.com)
+      - registration-id: stub-guest
+        label: Guest (emma.wilson@example.com)
+      - registration-id: stub-editor
+        label: Editor (noah.reed@example.com)
+      - registration-id: stub-viewer
+        label: Viewer (olivia.bennett@example.com)

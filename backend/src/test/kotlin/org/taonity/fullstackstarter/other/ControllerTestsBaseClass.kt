@@ -1,6 +1,8 @@
 package org.taonity.fullstackstarter.other
 
+import com.github.tomakehurst.wiremock.WireMockServer
 import jakarta.servlet.http.Cookie
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
@@ -18,6 +20,14 @@ import java.nio.charset.StandardCharsets
 @AutoConfigureMockMvc
 @ActiveProfiles("h2", "stub-google")
 class ControllerTestsBaseClass {
+
+    @Autowired(required = false)
+    private var googleWireMockServer: WireMockServer? = null
+
+    @BeforeEach
+    fun resetOAuthStubs() {
+        googleWireMockServer?.resetToDefaultMappings()
+    }
 
     @Autowired
     lateinit var mockMvc: MockMvc

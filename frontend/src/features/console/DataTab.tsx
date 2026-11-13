@@ -52,11 +52,17 @@ export type Column<T> = {
   /** Backend field id this column maps to; when set, the column is offered as a search scope. */
   searchKey?: string
   sortKey: string
+  /** Input-only columns have no meaningful sort order. */
+  sortable?: boolean
+  /** Render controls directly, without a text overflow preview. */
+  interactive?: boolean
   initialSortDirection?: 'asc' | 'desc'
   defaultVisible?: boolean
   mobileContent?: boolean
   mobileCompact?: boolean
   mobilePrimary?: boolean
+  /** Fold this control into the mobile row heading. */
+  mobileTools?: boolean
 }
 
 type DataTabProps<T> = {
@@ -71,6 +77,8 @@ type DataTabProps<T> = {
   expand?: (row: T) => React.ReactNode
   expandOnRowClick?: boolean
   rowActions?: (row: T) => React.ReactNode
+  rowActionsWidth?: number
+  stickyActions?: boolean
   /** Reads the room name off a row so it can be shown once instead of as a per-row column. */
   roomAccessor?: (row: T) => string
   canEdit?: boolean
@@ -128,6 +136,8 @@ export function DataTab<T>({
   expand,
   expandOnRowClick = false,
   rowActions,
+  rowActionsWidth = 96,
+  stickyActions = true,
   roomAccessor,
   canEdit = false,
   onDelete,
@@ -150,7 +160,6 @@ export function DataTab<T>({
   const [field, setField] = useState('all')
   const [exactMatch, setExactMatch] = useState(false)
   const [loadError, setLoadError] = useState(false)
-  const [columnWidthDrafts, setColumnWidthDrafts] = useState<Record<string, string>>({})
   const [sortKey, setSortKey] = useState(defaultSortKey)
   const [direction, setDirection] = useState<'desc' | 'asc'>(defaultSortDirection)
   const [highlightId, setHighlightId] = useState<string | null>(null)
@@ -253,29 +262,10 @@ export function DataTab<T>({
     }
   }, [columnVisibilityStorageKey, columns])
 
-  const setExactColumnWidth = (column: Column<T>) => {
-    const draft = columnWidthDrafts[column.key]
-    const requested = draft?.trim() ? Number(draft) : Number.NaN
-    if (Number.isFinite(requested)) {
-      const width = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, Math.round(requested)))
-      const next = { ...columnWidthsRef.current, [column.key]: width }
-      trackCustomWidth(column.key, width)
-      columnWidthsRef.current = next
-      setColumnWidths(next)
-      persistColumnWidths(next)
-    }
-    setColumnWidthDrafts((previous) => {
-      const next = { ...previous }
-      delete next[column.key]
-      return next
-    })
-  }
-
   const resetColumnWidths = () => {
     const defaults = Object.fromEntries(columns.map((column) => [column.key, column.defaultWidth]))
     columnWidthsRef.current = defaults
     setColumnWidths(defaults)
-    setColumnWidthDrafts({})
     customColumnKeysRef.current.clear()
     setHasCustomColumnWidths(false)
     try {
@@ -524,6 +514,8 @@ export function DataTab<T>({
   const rows = data?.content ?? []
   const visibleColumns = columns.filter((column) => visibleColumnKeys.has(column.key))
   const primaryColumn = visibleColumns.find(column => column.mobilePrimary) ?? visibleColumns[0]
+  const mobileToolColumns = visibleColumns.filter(column => column.mobileTools && column.key !== primaryColumn?.key)
+  const sortableColumns = columns.filter(column => column.sortable !== false)
   const hasActions = Boolean(rowActions || canEdit)
   const columnCount = visibleColumns.length + (showRowNumbers ? 1 : 0) + (expand ? 1 : 0) + (locate ? 1 : 0) + (hasActions ? 1 : 0)
   const firstRow = rows[0]
@@ -531,7 +523,7 @@ export function DataTab<T>({
   const searchableColumns = columns.filter((c) => c.searchKey)
   const tableWidth = visibleColumns.reduce(
     (sum, column) => sum + (columnWidths[column.key] ?? column.defaultWidth),
-    (showRowNumbers ? 56 : 0) + (expand ? 40 : 0) + (locate ? 48 : 0) + (hasActions ? 96 : 0),
+    (showRowNumbers ? 56 : 0) + (expand ? 40 : 0) + (locate ? 48 : 0) + (hasActions ? rowActionsWidth : 0),
   )
   const paginationProps = {
     page, size, rowCount: rows.length, totalElements: data?.totalElements,
@@ -597,7 +589,7 @@ export function DataTab<T>({
   }
 
   return (
-    <div className="data-tab flex min-w-0 flex-col gap-2 sm:gap-3">
+    <div data-table-id={columnWidthsKey} className="data-tab flex min-w-0 flex-col gap-2 sm:gap-3">
       <div className="data-toolbar flex flex-wrap items-center gap-2 sm:justify-between">
         <div className="data-search flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {roomAccessor && (roomName || showLoading) &&
@@ -619,8 +611,9 @@ export function DataTab<T>({
               value={field}
               onValueChange={(v) => v && onFieldChange(v)}
             >
-              <SelectTrigger size="sm" className="search-field h-7 w-[130px]" aria-label="Search column">
-                <SelectValue />
+              <SelectTrigger size="sm" className="search-field h-7 w-auto shrink-0" aria-label="Search scope" title="Choose which columns to search">
+                <span className="shrink-0 text-xs text-muted-foreground">Search in:</span>
+                <SelectValue className="flex-none whitespace-nowrap" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All columns</SelectItem>
@@ -668,11 +661,11 @@ export function DataTab<T>({
           {toolbarFilters}
         </div>
         <div className="data-actions flex items-center gap-1">
-          <Select items={Object.fromEntries(columns.map(column => [column.key, column.label]))}
+          <Select items={Object.fromEntries(sortableColumns.map(column => [column.key, column.label]))}
             value={columns.find(column => column.sortKey === sortKey)?.key}
             onValueChange={key => { const column = columns.find(column => column.key === key); if (column && column.sortKey !== sortKey) onSort(column) }}>
             <SelectTrigger size="sm" aria-label="Sort column" className="h-7 w-32 lg:hidden"><SelectValue /></SelectTrigger>
-            <SelectContent>{columns.map(column => <SelectItem key={column.key} value={column.key}>{column.label}</SelectItem>)}</SelectContent>
+            <SelectContent>{sortableColumns.map(column => <SelectItem key={column.key} value={column.key}>{column.label}</SelectItem>)}</SelectContent>
           </Select>
           <Button variant="ghost" size="icon-sm" className="lg:hidden" disabled={busy}
             aria-label={`Sort ${direction === 'asc' ? 'descending' : 'ascending'}`}
@@ -688,25 +681,13 @@ export function DataTab<T>({
                 </Button>
               }
             />
-            <PopoverContent side="bottom" align="end" className="w-80 max-w-[calc(100vw-1rem)] p-2">
+            <PopoverContent side="bottom" align="end" className="w-64 max-w-[calc(100vw-1rem)] p-2">
               <div className="grid max-h-[60dvh] gap-1 overflow-y-auto">
                 {columns.map((column) => {
                   const checked = visibleColumnKeys.has(column.key)
                   return (
                     <div key={column.key} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
                       <span className="min-w-0 flex-1 truncate">{column.label}</span>
-                      <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                        <Input
-                          type="number" inputMode="numeric" min={MIN_COLUMN_WIDTH} max={MAX_COLUMN_WIDTH} step={1}
-                          className="h-7 w-20 text-right text-foreground"
-                          aria-label={`${column.label} width in pixels`}
-                          value={columnWidthDrafts[column.key] ?? Math.round(columnWidths[column.key] ?? column.defaultWidth).toString()}
-                          onChange={(event) => setColumnWidthDrafts((previous) => ({ ...previous, [column.key]: event.target.value }))}
-                          onBlur={() => setExactColumnWidth(column)}
-                          onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
-                        />
-                        px
-                      </label>
                       <Switch
                         aria-label={`Show ${column.label} column`}
                         checked={checked}
@@ -770,9 +751,9 @@ export function DataTab<T>({
                     data-column-label={c.label}
                     className={cn('relative', c.headClassName)}
                     style={{ width: columnWidths[c.key] ?? c.defaultWidth }}
-                    aria-sort={sortKey === c.sortKey ? (direction === 'asc' ? 'ascending' : 'descending') : undefined}
+                    aria-sort={c.sortable !== false && sortKey === c.sortKey ? (direction === 'asc' ? 'ascending' : 'descending') : undefined}
                   >
-                    <button
+                    {c.sortable === false ? <span className="block truncate font-medium">{c.label}</span> : <button
                       type="button"
                       className="flex h-full w-full items-center gap-1 text-left font-medium hover:text-foreground"
                       disabled={showLoading}
@@ -782,7 +763,7 @@ export function DataTab<T>({
                       {sortKey === c.sortKey
                         ? direction === 'asc' ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />
                         : <ArrowUpDown className="size-3.5 text-muted-foreground/50" />}
-                    </button>
+                    </button>}
                     {nextColumn && (
                       <div
                         role="separator"
@@ -816,7 +797,7 @@ export function DataTab<T>({
                 )
               })}
               {locate && <TableHead className="w-[48px]" />}
-              {hasActions && <TableHead className="w-[96px] bg-muted pr-4 text-right min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-20 min-[1024px]:border-l">Actions</TableHead>}
+              {hasActions && <TableHead style={{ width: rowActionsWidth }} className={cn('pr-4 text-right', stickyActions && 'bg-muted min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-20 min-[1024px]:border-l')}>Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -827,7 +808,7 @@ export function DataTab<T>({
                   {expand && <TableCell className="record-toggle w-[40px]" />}
                   {showRowNumbers && <TableCell className="record-number text-right"><Skeleton className="ml-auto h-4 w-5" /></TableCell>}
                   {visibleColumns.map((c, idx) => (
-                    <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} data-compact={c.mobileCompact || undefined} data-primary={c.key === primaryColumn?.key || undefined} className={c.cellClassName}>
+                    <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} data-compact={c.mobileCompact || undefined} data-primary={c.key === primaryColumn?.key || undefined} data-mobile-tools={c.mobileTools && c.key !== primaryColumn?.key || undefined} className={c.cellClassName}>
                       <Skeleton
                         className={cn(
                           'h-4',
@@ -838,19 +819,7 @@ export function DataTab<T>({
                     </TableCell>
                   ))}
                   {locate && <TableCell />}
-                  {canEdit && (
-                    <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-10 min-[1024px]:border-l">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground"
-                        aria-label="Delete row"
-                        disabled
-                      >
-                        <Trash2 />
-                      </Button>
-                    </TableCell>
-                  )}
+                  {hasActions && <TableCell className="record-actions"><Skeleton className="ml-auto h-7 w-16" /></TableCell>}
                 </TableRow>
               ))}
 
@@ -879,11 +848,12 @@ export function DataTab<T>({
                     >
                       {primaryColumn && (
                         <MobileRecordHeading label={primaryColumn.label} rank={showRowNumbers ? page * size + index + 1 : undefined}
-                          actions={expand || hasActions || (locate && searching) ? <>
+                          actions={expand || hasActions || mobileToolColumns.length > 0 || (locate && searching) ? <>
                             {expand && <Button variant="ghost" size="icon-sm" aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
                               aria-expanded={isExpanded} onClick={() => toggleExpanded(id)}>{isExpanded ? <ChevronDown /> : <ChevronRight />}</Button>}
                             {locate && searching && <Button variant="ghost" size="icon-sm" aria-label="Jump to this row"
                               disabled={jumpingId === id} onClick={() => jumpTo(row)}><ArrowRightToLine /></Button>}
+                            {mobileToolColumns.map(column => <Fragment key={column.key}>{column.render ? column.render(row, { expand: () => toggleExpanded(id) }) : column.value(row)}</Fragment>)}
                             {rowActions?.(row)}
                             {canEdit && <Button variant="ghost" size="icon-sm" aria-label="Delete row" disabled={busy}
                               className="text-muted-foreground hover:text-destructive" onClick={() => remove(row)}><Trash2 /></Button>}
@@ -908,13 +878,13 @@ export function DataTab<T>({
                       )}
                       {showRowNumbers && <TableCell className="record-number text-right font-mono text-xs text-muted-foreground">{(page * size + index + 1).toLocaleString()}</TableCell>}
                       {visibleColumns.map((c) => (
-                        <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} data-compact={c.mobileCompact || undefined} data-primary={c.key === primaryColumn?.key || undefined} className={c.cellClassName}>
-                          <OverflowPreviewTrigger
+                        <TableCell key={c.key} data-label={c.label} data-content={c.mobileContent || undefined} data-compact={c.mobileCompact || undefined} data-primary={c.key === primaryColumn?.key || undefined} data-mobile-tools={c.mobileTools && c.key !== primaryColumn?.key || undefined} className={c.cellClassName}>
+                          {c.interactive ? (c.render ? c.render(row, { expand: () => toggleExpanded(id) }) : c.value(row)) : <OverflowPreviewTrigger
                             handle={overflowPreviewHandle}
                             fallbackText={c.value(row)}
                           >
                             {c.render ? c.render(row, { expand: () => toggleExpanded(id) }) : c.value(row)}
-                          </OverflowPreviewTrigger>
+                          </OverflowPreviewTrigger>}
                         </TableCell>
                       ))}
                       {locate && (
@@ -935,7 +905,7 @@ export function DataTab<T>({
                         </TableCell>
                       )}
                       {hasActions && (
-                        <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-10 min-[1024px]:border-l">
+                        <TableCell className={cn('record-actions pr-4 text-right', stickyActions && 'bg-background group-hover:bg-muted min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-10 min-[1024px]:border-l')}>
                           <div className="flex items-center justify-end gap-1">
                             {rowActions?.(row)}
                             {canEdit && <Button
