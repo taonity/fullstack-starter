@@ -13,7 +13,8 @@ export default async function setup() {
       const context = await browser.newContext()
       const page = await context.newPage()
       await page.goto(`http://127.0.0.1:8080/oauth2/authorization/${registration}`)
-      await expect(page).toHaveURL('http://127.0.0.1:3000/')
+      // Hydration may add the selected tab before the login navigation settles.
+      await expect(page).toHaveURL(url => url.origin === 'http://127.0.0.1:3000' && url.pathname === '/')
       await expect(page.getByText(email!, { exact: true })).toBeVisible()
       if (state === 'owner') await expect(page.getByRole('tab', { name: /^Admin/ })).toBeVisible()
       if (state === 'pending') await expect(page.getByText('Access pending', { exact: true })).toBeVisible()
