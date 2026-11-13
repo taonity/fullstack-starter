@@ -23,8 +23,9 @@ import {
 } from '@/components/ui/table'
 import { consoleApi } from './api'
 import { DataTab, type Column } from './DataTab'
+import { RecordTimestamp } from './RecordTimestamp'
 import { MobileRecordHeading } from './MobileRecordHeading'
-import { formatTime, formatExactTime } from './format'
+import { formatExactTime } from './format'
 import { DatePeriodFilter, type DatePeriod } from './DatePeriodFilter'
 import type { AccessInfo, AuditLog, ConsoleRole, PendingRequest, UserSummary } from './types'
 
@@ -35,7 +36,7 @@ const AUDIT_COLUMNS: Column<AuditLog>[] = [
     sortKey: 'occurredAt',
     initialSortDirection: 'desc',
     value: (a) => a.occurredAt,
-    render: (a) => <time dateTime={a.occurredAt} title={formatExactTime(a.occurredAt)}>{formatTime(a.occurredAt)}</time>,
+    render: (a) => <RecordTimestamp value={a.occurredAt} />,
     cellClassName: 'whitespace-nowrap text-muted-foreground tabular-nums',
     defaultWidth: 180,
     skeleton: 'w-[85%]',
@@ -251,6 +252,11 @@ export function AdminPanel({
               columns={AUDIT_COLUMNS}
               columnWidthsKey="audit-log"
               showRowNumbers
+              expandOnRowClick
+              expand={row => <dl className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
+                {Object.entries({ 'Record ID': row.id, When: formatExactTime(row.occurredAt), Action: row.action, Target: row.targetType, 'Target ID': row.targetId ?? '\u2014', Actor: row.actorEmail }).map(([label, value]) =>
+                  <div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="wrap-anywhere">{value}</dd></div>)}
+              </dl>}
               defaultSortKey="occurredAt"
               defaultSortDirection="desc"
               rowKey={(a) => a.id}

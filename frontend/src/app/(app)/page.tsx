@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchAuthenticatedUserStatus, requestLogout } from '@/lib/auth'
+import { fetchAuthenticatedUserStatus, requestLogout, POST_LOGIN_PATH_KEY, safeLocalPath } from '@/lib/auth'
 import { getRuntimeConfig } from '@/lib/runtimeConfig'
 import { getCookie } from '@/lib/cookies'
 import ErrorNotification from '@/components/ErrorNotification'
+import { Badge } from '@/components/ui/badge'
+import type { AccessInfo } from '@/features/console/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import DataConsole from '@/features/console/DataConsole'
@@ -16,6 +18,7 @@ interface AuthenticatedUser {
 
 export default function Home() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
+  const [access, setAccess] = useState<AccessInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const forceLoading = useDevLoading()
@@ -30,9 +33,15 @@ export default function Home() {
       const result = await fetchAuthenticatedUserStatus()
 
       if (result.status === 'authenticated') {
+        const returnPath = safeLocalPath(sessionStorage.getItem(POST_LOGIN_PATH_KEY))
+        sessionStorage.removeItem(POST_LOGIN_PATH_KEY)
+        if (returnPath && returnPath !== `${location.pathname}${location.search}${location.hash}`) {
+          location.replace(returnPath)
+          return
+        }
         setUser(result.data)
       } else if (result.status === 'unauthenticated') {
-        if (!isDevLoadingEnabled()) window.location.href = '/login'
+        if (!isDevLoadingEnabled()) window.location.href = `/login?next=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`
         return
       } else {
         setError(result.message)
@@ -64,13 +73,16 @@ export default function Home() {
         <header className="console-header flex items-center justify-between gap-2 border-b pb-2 pr-12 sm:pb-3 min-[1300px]:pr-0">
           <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:gap-2">
             <span className="shrink-0 text-base font-semibold sm:text-lg">Data console</span>
-            {loading || forceLoading ? (
-              <Skeleton className="h-4 w-40" />
-            ) : (
-              user && (
-                <span className="truncate text-xs text-muted-foreground sm:text-sm" title={user.email}>{user.email}</span>
-              )
-            )}
+            <div className="flex min-w-0 items-center gap-1.5">
+              {loading || forceLoading ? (
+                <Skeleton className="h-4 w-40" />
+              ) : (
+                user && (
+                  <span className="truncate text-xs text-muted-foreground sm:text-sm" title={user.email}>{user.email}</span>
+                )
+              )}
+              {access && !forceLoading && <Badge variant={access.isAdmin ? 'default' : access.canEdit ? 'secondary' : 'outline'} className="shrink-0 text-[10px] sm:text-xs" aria-label={`Access role: ${access.role}`}>{access.role}</Badge>}
+            </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Log out
@@ -83,6 +95,7 @@ export default function Home() {
             <DataConsole
               enabled={user !== null && !forceLoading}
               forceLoading={forceLoading}
+              onAccessChange={setAccess}
             />
           )}
         </main>

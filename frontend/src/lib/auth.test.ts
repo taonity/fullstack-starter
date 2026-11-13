@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { checkBackendLiveness, fetchAuthenticatedUserStatus } from '@/lib/auth'
+import { checkBackendLiveness, fetchAuthenticatedUserStatus, safeLocalPath } from '@/lib/auth'
 import { DEFAULT_NETWORK_ERROR_MESSAGE, DEFAULT_TIMEOUT_ERROR_MESSAGE } from '@/lib/clientApi'
 
 vi.mock('@/lib/clientApi', () => ({
@@ -18,6 +18,12 @@ afterEach(() => {
 })
 
 describe('auth api', () => {
+  it('preserves local login destinations and rejects external or malformed URLs', () => {
+    expect(safeLocalPath('/?tab=config#settings')).toBe('/?tab=config#settings')
+    for (const path of [null, 'https://example.test', '//example.test/path', '/\\example.test/path', '//[invalid']) {
+      expect(safeLocalPath(path)).toBeNull()
+    }
+  })
   it('returns authenticated status when the access endpoint succeeds', async () => {
     fetchWithTimeoutMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ email: 'user@example.com' }), { status: 200 }),

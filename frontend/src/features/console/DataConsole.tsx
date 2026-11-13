@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import ErrorNotification from '@/components/ErrorNotification'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -12,21 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminPanel } from './AdminPanel'
 import { consoleApi } from './api'
 import { ConfigTab } from './ConfigTab'
 import { AppInfoPanel } from '@/features/info/AppInfoPanel'
 import type { AccessInfo, ConsoleRole } from './types'
-
-const ROLE_BADGE: Record<ConsoleRole, 'default' | 'secondary' | 'outline'> = {
-  OWNER: 'default',
-  ADMIN: 'default',
-  EDITOR: 'secondary',
-  VIEWER: 'outline',
-  NONE: 'outline',
-}
+import { consoleTabUrl, readConsoleTab, type TabKey } from './navigation'
 
 const LOADING_ADMIN_ACCESS: AccessInfo = {
   email: '',
@@ -40,7 +31,6 @@ const LOADING_ADMIN_ACCESS: AccessInfo = {
   isOwner: true,
 }
 
-type TabKey = 'about' | 'config' | 'admin'
 const TAB_STORAGE_KEY = 'console.activeTab'
 
 function storedTab(): TabKey {
@@ -51,9 +41,11 @@ function storedTab(): TabKey {
 export default function DataConsole({
   enabled = true,
   forceLoading = false,
+  onAccessChange,
 }: {
   enabled?: boolean
   forceLoading?: boolean
+  onAccessChange?: (access: AccessInfo) => void
 }) {
   const [access, setAccess] = useState<AccessInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,6 +65,7 @@ export default function DataConsole({
     if (next === tab) return
     setTab(next)
     localStorage.setItem(TAB_STORAGE_KEY, next)
+    window.history.pushState(null, '', consoleTabUrl(window.location.href, next))
     setRefreshKeys((prev) => ({ ...prev, [next]: prev[next] + 1 }))
     setVisited((prev) => {
       if (prev.has(next)) return prev
@@ -84,19 +77,30 @@ export default function DataConsole({
 
   const loadAccess = useCallback(async () => {
     try {
-      setAccess(await consoleApi.getAccess())
+      const next = await consoleApi.getAccess()
+      setAccess(next)
+      onAccessChange?.(next)
     } catch {
       setError('Failed to load access information.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [onAccessChange])
 
   useLayoutEffect(() => {
-    const restored = storedTab()
+    const restored = readConsoleTab(window.location.search, storedTab())
+    window.history.replaceState(null, '', consoleTabUrl(window.location.href, restored))
     setTab(restored)
     setVisited(new Set<TabKey>([restored]))
     setTabRestored(true)
+    const restore = () => {
+      const next = readConsoleTab(window.location.search, storedTab())
+      setTab(next)
+      setVisited(previous => new Set([...previous, next]))
+      setRefreshKeys(previous => ({ ...previous, [next]: previous[next] + 1 }))
+    }
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
   }, [])
 
   useEffect(() => {
@@ -112,9 +116,12 @@ export default function DataConsole({
 
   useEffect(() => {
     if (!forceLoading && !loading && access && tab === 'admin' && !access.isAdmin) {
-      selectTab('about')
+      window.history.replaceState(null, '', consoleTabUrl(window.location.href, 'about'))
+      setTab('about')
+      localStorage.setItem(TAB_STORAGE_KEY, 'about')
+      setVisited(previous => new Set([...previous, 'about']))
     }
-  }, [access, forceLoading, loading, selectTab, tab])
+  }, [access, forceLoading, loading, tab])
 
   // Load the pending-request count independently of the Admin tab so the tab badge is accurate
   // even before an admin opens the tab (the tab is mounted lazily).
@@ -140,7 +147,7 @@ export default function DataConsole({
     return (
       <div className="flex flex-col gap-3">
         {error && <ErrorNotification message={error} onClose={() => setError(null)} />}
-        <AccessGate access={access} onUpdated={setAccess} onError={setError} />
+        <AccessGate access={access} onUpdated={next => { setAccess(next); onAccessChange?.(next) }} onError={setError} />
       </div>
     )
   }
@@ -180,16 +187,9 @@ export default function DataConsole({
               </TabsTrigger>
             ))}
           </TabsList>
-          <div className="console-access flex flex-wrap items-center gap-2">
-            {access ? (
-              <>
-                <UpgradeAccessControl access={access} onUpdated={setAccess} onError={setError} />
-                <Badge variant={ROLE_BADGE[access.role]}>{access.role}</Badge>
-              </>
-            ) : (
-              <Skeleton className="h-6 w-16 rounded-full" />
-            )}
-          </div>
+          {access?.role === 'VIEWER' && <div className="console-access flex flex-wrap items-center gap-2">
+            <UpgradeAccessControl access={access} onUpdated={next => { setAccess(next); onAccessChange?.(next) }} onError={setError} />
+          </div>}
         </div>
 
         <TabsContent value="about" className="console-inset pt-2" keepMounted>
@@ -290,7 +290,7 @@ function AccessGate({
             </SelectContent>
           </Select>
           <Button disabled={submitting} onClick={submit}>
-            {submitting ? 'Submitting…' : 'Request access'}
+            {submitting ? 'Submittingâ€¦' : 'Request access'}
           </Button>
         </div>
       </CardContent>
@@ -341,7 +341,7 @@ function UpgradeAccessControl({
       <div className="flex items-center gap-1">
         <span className="text-xs text-muted-foreground">Request editor access?</span>
         <Button size="xs" disabled={submitting} onClick={requestUpgrade}>
-          {submitting ? 'Requesting…' : 'Confirm'}
+          {submitting ? 'Requestingâ€¦' : 'Confirm'}
         </Button>
         <Button
           size="xs"

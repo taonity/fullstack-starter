@@ -23,9 +23,9 @@ spring:
             scope: profile,email
         provider:
           google-stub-guest:
-            authorization-uri: http://127.0.0.1:9561/oauth2/authorize
-            token-uri: http://127.0.0.1:9561/oauth2/token
-            user-info-uri: http://127.0.0.1:9561/oauth2/v3/userinfo/guest
+            authorization-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/authorize
+            token-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/token
+            user-info-uri: http://127.0.0.1:${app.stub.google.port}/oauth2/v3/userinfo/guest
             user-name-attribute: sub
 
 app:

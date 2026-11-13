@@ -77,3 +77,31 @@ for (const scene of scenes) {
     })
   })
 }
+
+test.describe('console interactions', () => {
+  test.use({ storageState: 'test-results/demo-owner.json' })
+
+  test('restores tabs through URLs and browser history', async ({ page }) => {
+    await page.goto('/?tab=admin')
+    await expect(page.getByRole('tab', { name: /^Admin/ })).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Config', exact: true }).click()
+    await expect(page).toHaveURL(/\?tab=config$/)
+    await expect(page.getByRole('textbox', { name: 'Search settings' })).toBeVisible()
+    await page.goBack()
+    await expect(page.getByRole('tab', { name: /^Admin/ })).toHaveAttribute('aria-selected', 'true')
+    await page.goForward()
+    await expect(page.getByRole('tab', { name: 'Config', exact: true })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  test('opens row details with the keyboard', async ({ page }) => {
+    await page.goto('/?tab=admin')
+    const rows = page.locator('.data-tab .record-row')
+    await expect(rows).toHaveCount(5)
+    await rows.first().focus()
+    await page.keyboard.press('Enter')
+    await expect(rows.first()).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('.record-detail')).toContainText('app.console.max-page-size')
+    await page.keyboard.press('Space')
+    await expect(rows.first()).toHaveAttribute('aria-expanded', 'false')
+  })
+})

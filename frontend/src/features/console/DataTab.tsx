@@ -44,7 +44,7 @@ export type Column<T> = {
   key: string
   label: string
   value: (row: T) => string
-  render?: (row: T) => React.ReactNode
+  render?: (row: T, actions: { expand: () => void }) => React.ReactNode
   cellClassName?: string
   headClassName?: string
   defaultWidth: number
@@ -69,6 +69,8 @@ type DataTabProps<T> = {
   locate?: (row: T, size: number, direction?: string) => Promise<number>
   /** When set, rows get a chevron toggle that reveals this content in a full-width row below. */
   expand?: (row: T) => React.ReactNode
+  expandOnRowClick?: boolean
+  rowActions?: (row: T) => React.ReactNode
   /** Reads the room name off a row so it can be shown once instead of as a per-row column. */
   roomAccessor?: (row: T) => string
   canEdit?: boolean
@@ -99,6 +101,12 @@ function hasOverflow(element: HTMLElement): boolean {
   return element.scrollWidth - element.clientWidth > 1 || element.scrollHeight - element.clientHeight > 1
 }
 
+const ROW_CONTROLS = 'a, button, input, label, select, textarea, summary, [role="button"], [role="switch"], [role="combobox"], [contenteditable="true"]'
+
+function isRowControl(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest(ROW_CONTROLS))
+}
+
 const SKELETON_BAR_WIDTHS = [
   'w-[85%]',
   'w-[58%]',
@@ -118,6 +126,8 @@ export function DataTab<T>({
   load,
   locate,
   expand,
+  expandOnRowClick = false,
+  rowActions,
   roomAccessor,
   canEdit = false,
   onDelete,
@@ -514,13 +524,14 @@ export function DataTab<T>({
   const rows = data?.content ?? []
   const visibleColumns = columns.filter((column) => visibleColumnKeys.has(column.key))
   const primaryColumn = visibleColumns.find(column => column.mobilePrimary) ?? visibleColumns[0]
-  const columnCount = visibleColumns.length + (showRowNumbers ? 1 : 0) + (expand ? 1 : 0) + (locate ? 1 : 0) + (canEdit ? 1 : 0)
+  const hasActions = Boolean(rowActions || canEdit)
+  const columnCount = visibleColumns.length + (showRowNumbers ? 1 : 0) + (expand ? 1 : 0) + (locate ? 1 : 0) + (hasActions ? 1 : 0)
   const firstRow = rows[0]
   const roomName = roomAccessor && firstRow ? roomAccessor(firstRow) : null
   const searchableColumns = columns.filter((c) => c.searchKey)
   const tableWidth = visibleColumns.reduce(
     (sum, column) => sum + (columnWidths[column.key] ?? column.defaultWidth),
-    (showRowNumbers ? 56 : 0) + (expand ? 40 : 0) + (locate ? 48 : 0) + (canEdit ? 64 : 0),
+    (showRowNumbers ? 56 : 0) + (expand ? 40 : 0) + (locate ? 48 : 0) + (hasActions ? 96 : 0),
   )
   const paginationProps = {
     page, size, rowCount: rows.length, totalElements: data?.totalElements,
@@ -805,7 +816,7 @@ export function DataTab<T>({
                 )
               })}
               {locate && <TableHead className="w-[48px]" />}
-              {canEdit && <TableHead className="w-[64px] bg-muted pr-4 text-right min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-20 min-[1024px]:border-l">Actions</TableHead>}
+              {hasActions && <TableHead className="w-[96px] bg-muted pr-4 text-right min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-20 min-[1024px]:border-l">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -854,19 +865,30 @@ export function DataTab<T>({
                         if (element) rowRefs.current.set(id, element)
                         else rowRefs.current.delete(id)
                       }}
-                      className={cn('record-row group h-[33px]', highlightId === id && 'bg-primary/10')}
+                      className={cn('record-row group h-[33px]', expandOnRowClick && expand && 'cursor-pointer', highlightId === id && 'bg-primary/10')}
+                      tabIndex={expandOnRowClick && expand ? 0 : undefined}
+                      aria-expanded={expandOnRowClick && expand ? isExpanded : undefined}
+                      onClick={expandOnRowClick && expand ? event => {
+                        if (!isRowControl(event.target) && !window.getSelection()?.toString()) toggleExpanded(id)
+                      } : undefined}
+                      onKeyDown={expandOnRowClick && expand ? event => {
+                        if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+                        event.preventDefault()
+                        toggleExpanded(id)
+                      } : undefined}
                     >
                       {primaryColumn && (
                         <MobileRecordHeading label={primaryColumn.label} rank={showRowNumbers ? page * size + index + 1 : undefined}
-                          actions={expand || canEdit || (locate && searching) ? <>
+                          actions={expand || hasActions || (locate && searching) ? <>
                             {expand && <Button variant="ghost" size="icon-sm" aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
                               aria-expanded={isExpanded} onClick={() => toggleExpanded(id)}>{isExpanded ? <ChevronDown /> : <ChevronRight />}</Button>}
                             {locate && searching && <Button variant="ghost" size="icon-sm" aria-label="Jump to this row"
                               disabled={jumpingId === id} onClick={() => jumpTo(row)}><ArrowRightToLine /></Button>}
+                            {rowActions?.(row)}
                             {canEdit && <Button variant="ghost" size="icon-sm" aria-label="Delete row" disabled={busy}
                               className="text-muted-foreground hover:text-destructive" onClick={() => remove(row)}><Trash2 /></Button>}
                           </> : undefined}>
-                          {primaryColumn.render ? primaryColumn.render(row) : primaryColumn.value(row)}
+                          {primaryColumn.render ? primaryColumn.render(row, { expand: () => toggleExpanded(id) }) : primaryColumn.value(row)}
                         </MobileRecordHeading>
                       )}
                       {expand && (
@@ -891,7 +913,7 @@ export function DataTab<T>({
                             handle={overflowPreviewHandle}
                             fallbackText={c.value(row)}
                           >
-                            {c.render ? c.render(row) : c.value(row)}
+                            {c.render ? c.render(row, { expand: () => toggleExpanded(id) }) : c.value(row)}
                           </OverflowPreviewTrigger>
                         </TableCell>
                       ))}
@@ -912,9 +934,11 @@ export function DataTab<T>({
                           )}
                         </TableCell>
                       )}
-                      {canEdit && (
+                      {hasActions && (
                         <TableCell className="record-actions bg-background pr-4 text-right group-hover:bg-muted min-[1024px]:sticky min-[1024px]:right-0 min-[1024px]:z-10 min-[1024px]:border-l">
-                          <Button
+                          <div className="flex items-center justify-end gap-1">
+                            {rowActions?.(row)}
+                            {canEdit && <Button
                             variant="ghost"
                             size="icon-sm"
                             className="text-muted-foreground hover:text-destructive"
@@ -923,7 +947,8 @@ export function DataTab<T>({
                             onClick={() => remove(row)}
                           >
                             <Trash2 />
-                          </Button>
+                          </Button>}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>

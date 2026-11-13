@@ -8,6 +8,8 @@ A template for building full-stack web applications with Google OAuth2 authentic
 - Next.js TypeScript frontend with backend calls proxied through Next.js API routes
 - Google OAuth2 production and WireMock-backed local login profiles
 - PostgreSQL, H2, Flyway, health endpoints, and Docker Compose deployment templates
+- Shareable console tabs, login return paths, accessible row details, and keyboard controls
+- Installable app metadata with distinct stage branding
 
 ## Prerequisites
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { checkBackendLiveness } from '@/lib/auth'
+import { checkBackendLiveness, POST_LOGIN_PATH_KEY, safeLocalPath } from '@/lib/auth'
 import { getRuntimeConfig } from '@/lib/runtimeConfig'
 import { getCookie, deleteCookie } from '@/lib/cookies'
 import ErrorNotification from '@/components/ErrorNotification'
@@ -48,11 +48,15 @@ export default function LoginPage() {
   }, [])
 
   useEffect(() => {
+    const requestedPath = safeLocalPath(new URLSearchParams(window.location.search).get('next'))
+    if (requestedPath) sessionStorage.setItem(POST_LOGIN_PATH_KEY, requestedPath)
     // Check if already authenticated by probing an authenticated endpoint
     fetch('/api/console/access/me')
       .then((res) => {
         if (res.ok) {
-          window.location.href = '/'
+          const returnPath = safeLocalPath(sessionStorage.getItem(POST_LOGIN_PATH_KEY))
+          sessionStorage.removeItem(POST_LOGIN_PATH_KEY)
+          window.location.href = returnPath ?? '/'
         }
       })
       .catch(() => {

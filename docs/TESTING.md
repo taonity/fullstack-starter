@@ -83,3 +83,7 @@ class ExampleControllerTest : ControllerTestsBaseClass() {
 ## Frontend expectations
 
 Use Vitest for environment parsing, authentication helpers, proxy behavior, and failure cases. Keep tests beside their source when practical. Current focused patterns are [`auth.test.ts`](../frontend/src/lib/auth.test.ts), [`env.test.ts`](../frontend/src/lib/env.test.ts), and [`runtimeConfig.test.ts`](../frontend/src/lib/runtimeConfig.test.ts).
+
+## Local OAuth stub port
+
+The local Google stub defaults to port `9561` (`app.stub.google.port`). Override it with `--app.stub.google.port=9562` when another local application uses that port. OAuth provider URLs use the same property. Backend tests use `19561` so a running demo can remain on the default port.
