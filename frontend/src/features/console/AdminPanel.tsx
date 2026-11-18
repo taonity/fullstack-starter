@@ -123,9 +123,9 @@ export function AdminPanel({
 
   return (
     <div className="admin-panel flex min-w-0 flex-col gap-4 sm:gap-6">
-      <Card>
+      <Card className="admin-section" role="region" aria-labelledby="admin-requests-title">
         <CardHeader>
-          <CardTitle className="text-base">Pending access requests</CardTitle>
+          <CardTitle id="admin-requests-title" role="heading" aria-level={2} className="text-base">Pending access requests</CardTitle>
         </CardHeader>
         <CardContent>
           <DataTab<PendingRequest>
@@ -173,9 +173,9 @@ export function AdminPanel({
         onAccessChange={refreshAccess}
       />
 
-      <Card>
+      <Card className="admin-section" role="region" aria-labelledby="admin-audit-title">
         <CardHeader>
-          <CardTitle className="text-base">Audit log</CardTitle>
+          <CardTitle id="admin-audit-title" role="heading" aria-level={2} className="text-base">Audit log</CardTitle>
           <p className="text-xs text-muted-foreground">
             Retained for 2 weeks. Records what changed and by whom — never the changed data.
           </p>
@@ -224,8 +224,9 @@ const REQUEST_COLUMNS: Column<PendingRequest>[] = [
 ]
 
 const USER_COLUMNS: Column<UserSummary>[] = [
-  ...REQUEST_COLUMNS.slice(0, 2),
-  { key: 'accessStatus', label: 'Status', sortKey: 'accessStatus', searchKey: 'accessStatus', value: row => row.accessStatus, render: row => <Badge variant="secondary" className="font-normal">{row.accessStatus}</Badge>, defaultWidth: 140, mobileCompact: true },
+  REQUEST_COLUMNS[0]!,
+  { ...REQUEST_COLUMNS[1]!, cellClassName: 'user-email truncate text-muted-foreground' },
+  { key: 'accessStatus', label: 'Status', sortKey: 'accessStatus', searchKey: 'accessStatus', value: row => row.accessStatus, render: row => <Badge variant="secondary" className="font-normal">{row.accessStatus}</Badge>, defaultWidth: 140, mobileCompact: true, cellClassName: 'user-status' },
   { key: 'role', label: 'Role', sortKey: 'role', searchKey: 'role', value: row => ROLE_LABELS[row.role], defaultWidth: 180, interactive: true, mobileTools: true },
 ]
 
@@ -278,9 +279,9 @@ function UsersCard({ access, forceLoading, onError, refreshKey, onAccessChange }
   }
 
   return (
-    <Card>
+    <Card className="admin-section" role="region" aria-labelledby="admin-users-title">
       <CardHeader>
-        <CardTitle className="text-base">Users</CardTitle>
+        <CardTitle id="admin-users-title" role="heading" aria-level={2} className="text-base">Users</CardTitle>
         <p className="text-xs text-muted-foreground">
           {access.isOwner ? 'You can assign any role, including admins.' : 'You can manage roles up to Editor. Admin roles are managed by the owner.'}
         </p>

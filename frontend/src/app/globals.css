@@ -629,6 +629,29 @@ html {
     background: color-mix(in oklab, var(--muted) 40%, transparent);
   }
 
+  .admin-panel {
+    gap: 24px;
+  }
+
+  .console-shell .admin-panel > .admin-section {
+    gap: 12px;
+    border-block: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--card);
+    padding-block: 12px;
+  }
+
+  .console-shell .admin-section > [data-slot='card-header'] {
+    gap: 4px;
+    border: 0;
+    background: transparent;
+    padding-block: 0;
+  }
+
+  .admin-section > [data-slot='card-header'] [data-slot='card-title'] {
+    font-weight: 600;
+  }
+
   .admin-panel [data-slot='card-content']:has(> .data-table-frame),
   .admin-panel [data-slot='card-content']:has(> .data-tab),
   .admin-panel [data-slot='card-content']:has(.data-tab) {
@@ -704,6 +727,14 @@ html {
   .mobile-records .record-row > [data-content] {
     order: 3;
     grid-column: 1 / -1;
+  }
+
+  .admin-panel .mobile-records .record-row > .user-email {
+    grid-column: span 8;
+  }
+
+  .admin-panel .mobile-records .record-row > .user-status {
+    grid-column: span 4;
   }
 
   .mobile-records .record-row > .record-heading {

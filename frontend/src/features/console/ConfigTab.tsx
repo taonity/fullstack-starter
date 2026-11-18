@@ -21,6 +21,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { useTheme, type Theme } from '@/components/theme/ThemeProvider'
 import { cn } from '@/lib/utils'
 import { consoleApi } from './api'
 import type { ConfigField, ConfigSchema } from './types'
@@ -61,6 +62,19 @@ function formatValue(field: ConfigField, raw: unknown): string {
 
 const STACKED_TYPES = new Set(['STRING', 'STRING_LIST', 'TEXT'])
 
+const THEME_FIELD: ConfigField = {
+  key: 'theme',
+  group: 'Client',
+  label: 'Theme',
+  type: 'ENUM',
+  enumValues: ['System', 'Light', 'Dark'],
+  min: null,
+  max: null,
+  defaultValue: 'System',
+  value: 'System',
+  overridden: false,
+}
+
 export function ConfigTab({
   canEdit,
   forceLoading = false,
@@ -72,6 +86,7 @@ export function ConfigTab({
   onError: (message: string) => void
   refreshKey?: number
 }) {
+  const { theme, setTheme } = useTheme()
   const [schema, setSchema] = useState<ConfigSchema | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -112,7 +127,10 @@ export function ConfigTab({
       }
       byGroup.get(field.group)!.push(field)
     }
-    return order.map((name) => ({ name, fields: byGroup.get(name)! }))
+    return [
+      ...order.map((name) => ({ name, fields: byGroup.get(name)! })),
+      { name: THEME_FIELD.group, fields: [THEME_FIELD] },
+    ]
   }, [schema])
 
   useEffect(() => {
@@ -343,7 +361,17 @@ export function ConfigTab({
                     </div>
                   )}
                   <div className="config-fields divide-y">
-                    {group.fields.map((field) => (
+                    {group.fields.map((field) => field.key === THEME_FIELD.key ? (
+                      <div key={field.key} className="config-row config-field grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 md:flex md:gap-3">
+                        <span className="min-w-0 flex-1 text-sm font-medium">Theme</span>
+                        <FieldControl
+                          field={field}
+                          value={theme.charAt(0).toUpperCase() + theme.slice(1)}
+                          disabled={false}
+                          onChange={value => setTheme(value.toLowerCase() as Theme)}
+                        />
+                      </div>
+                    ) : (
                       <FieldRow
                         key={field.key}
                         field={field}
@@ -548,9 +576,9 @@ function FieldControl({
         <SelectTrigger size="sm" className="w-full md:w-44" aria-label={field.label}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent align="start" alignItemWithTrigger={false} className="min-w-0 border border-input ring-0">
           {field.enumValues.map((opt) => (
-            <SelectItem key={opt} value={opt}>
+            <SelectItem key={opt} value={opt} className="min-h-9 pl-2.5 md:min-h-7">
               {opt}
             </SelectItem>
           ))}

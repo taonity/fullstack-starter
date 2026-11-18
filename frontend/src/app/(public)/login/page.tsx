@@ -6,6 +6,7 @@ import { checkBackendLiveness, POST_LOGIN_PATH_KEY, safeLocalPath } from '@/lib/
 import { getRuntimeConfig } from '@/lib/runtimeConfig'
 import { getCookie, deleteCookie } from '@/lib/cookies'
 import ErrorNotification from '@/components/ErrorNotification'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   UNAUTHORIZED_ACCOUNT: 'Your account is not authorized to access this application.',
@@ -73,6 +74,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-1 flex-col">
+      <ThemeToggle className="absolute right-3 top-2 z-50 min-h-11 min-w-11 sm:top-3 sm:min-h-0 sm:min-w-0" />
       <div className="login-container relative">
         <div className="login-card">
           <h1 className="login-title">Fullstack Starter</h1>

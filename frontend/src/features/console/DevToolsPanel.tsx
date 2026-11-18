@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Bug, ClipboardCopy, LoaderCircle, LogIn, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { getRuntimeConfig } from '@/lib/runtimeConfig'
 import type { StubLogin } from './types'
 import {
@@ -170,6 +171,7 @@ export function DevToolsPanel() {
       </div>
 
       <div className="mt-2 flex flex-col gap-2 border-t pt-2">
+        <ThemeToggle showLabel className="min-h-11 justify-start sm:min-h-0" />
         <Button
           type="button"
           size="sm"

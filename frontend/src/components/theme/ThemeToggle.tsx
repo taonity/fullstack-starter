@@ -16,7 +16,7 @@ const NEXT_LABEL: Record<Theme, string> = {
  * A single button that cycles the theme selection: system → light → dark → system.
  * The icon reflects the current selection (monitor for system, sun for light, moon for dark).
  */
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle({ className, showLabel = false }: { className?: string; showLabel?: boolean }) {
   const { theme, setTheme } = useTheme()
 
   const cycle = () => {
@@ -28,13 +28,14 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <Button
       variant="ghost"
-      size="icon-sm"
+      size={showLabel ? 'sm' : 'icon-sm'}
       className={className}
       onClick={cycle}
       aria-label={NEXT_LABEL[theme]}
       title={`Theme: ${theme}`}
     >
       {theme === 'system' ? <Monitor /> : theme === 'light' ? <Sun /> : <Moon />}
+      {showLabel && `Theme: ${theme.charAt(0).toUpperCase()}${theme.slice(1)}`}
     </Button>
   )
 }
