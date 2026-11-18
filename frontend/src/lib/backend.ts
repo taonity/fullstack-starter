@@ -13,7 +13,9 @@ export async function fetchFromBackend(
   const requestLabel = `${init.method ?? req.method} ${new URL(requestUrl).pathname}`
   const headers = new Headers(init.headers)
   const cookie = req.headers.get('cookie')
-  if (cookie) {
+  if (init.credentials === 'omit') {
+    headers.delete('cookie')
+  } else if (cookie) {
     headers.set('cookie', cookie)
   }
 

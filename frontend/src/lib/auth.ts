@@ -55,9 +55,26 @@ export async function checkBackendLiveness() {
       }
     }
 
-    const data = await response.json()
+    if (!response.ok) {
+      return {
+        ok: false as const,
+        message: `The sign-in check failed (HTTP ${response.status}). Please try again later.`,
+        status: response.status,
+      }
+    }
 
-    if (!response.ok || data.status !== 'UP') {
+    let data: unknown
+    try {
+      data = await response.json()
+    } catch {
+      return {
+        ok: false as const,
+        message: 'The sign-in check received an unexpected server response. Please try again later.',
+        status: response.status,
+      }
+    }
+
+    if (typeof data !== 'object' || data === null || !('status' in data) || data.status !== 'UP') {
       return {
         ok: false as const,
         message: 'Backend server is currently unavailable. Please try again later.',

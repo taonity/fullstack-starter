@@ -96,4 +96,29 @@ describe('auth api', () => {
       message: DEFAULT_NETWORK_ERROR_MESSAGE,
     })
   })
+
+  it.each([
+    ['an empty error', new Response(null, { status: 500 })],
+    ['an HTML error', new Response('<html>Internal server error</html>', { status: 500 })],
+    ['an edge rejection', new Response('<html>Forbidden</html>', { status: 403 })],
+  ])('reports HTTP status for %s instead of blaming the connection', async (_label, response) => {
+    fetchWithTimeoutMock.mockResolvedValueOnce(response)
+
+    await expect(checkBackendLiveness()).resolves.toEqual({
+      ok: false,
+      message: `The sign-in check failed (HTTP ${response.status}). Please try again later.`,
+      status: response.status,
+    })
+  })
+
+  it.each(['<html>Unexpected page</html>', '', 'null'])('reports an unexpected successful response without a network error (%s)', async body => {
+    fetchWithTimeoutMock.mockResolvedValueOnce(new Response(body, { status: 200 }))
+
+    const result = await checkBackendLiveness()
+    expect(result).toMatchObject({
+      ok: false,
+      status: 200,
+    })
+    expect(result.message).not.toBe(DEFAULT_NETWORK_ERROR_MESSAGE)
+  })
 })
