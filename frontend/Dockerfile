@@ -2,7 +2,7 @@
 # docker build -t generaltao725/fullstack-starter-frontend .
 # docker run -p 3000:3000 generaltao725/fullstack-starter-frontend
 
-FROM node:24-alpine AS base
+FROM node:26-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
